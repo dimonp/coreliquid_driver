@@ -53,12 +53,12 @@ void monitor_cpu_temperature(hid_device *handle)
     // Loop on chips
     nr = 0;
     while (!stop && ((chip = sensors_get_detected_chips(NULL, &nr)) != NULL)) {
-        if (!strcmp(chip->prefix, "coretemp")) { // This chip gives CPU temperatures
+        if (!strcmp(chip->prefix, "coretemp") || !strcmp(chip->prefix, "k10temp")) { // This chip gives CPU temperatures
             // Loop on features for this chip
             int nf = 0;
             while (!stop && ((feature = sensors_get_features(chip, &nf)) != NULL)) {
                 if (feature->type == SENSORS_FEATURE_TEMP) {
-                    if (!strcmp(feature->name, "temp1")) { // This feature is the global core CPU temperature
+                    if (!strcmp(feature->name, "temp1") || !strcmp(feature->name, "Tctl")) { // This feature is the global core CPU temperature
                         // Loop on subfeatures for this chip feature
                         int ns = 0;
                         while (!stop && ((subfeature = sensors_get_all_subfeatures(chip, feature, &ns)) != NULL)) {
@@ -70,6 +70,7 @@ void monitor_cpu_temperature(hid_device *handle)
                                     ret = sensors_get_value(chip, subfeature->number, &temp);
                                     if (ret == 0) {
                                         itemp = (int)temp;
+                                        printf("CPU Temperature: %d°C\n", itemp);
                                         // Set CPU status (cmd 0x85)
                                         buf[4] = itemp & 0xFF;
                                         buf[5] = (itemp >> 8) & 0xFF;
@@ -118,7 +119,7 @@ void set_fan_mode(hid_device *handle, int fan_mode)
  * Signal handler to stop the daemon.
  * Can take up to 2s to stop (sleeping time between temperature reads).
  */
-void stopit()
+void stopit(int sig)
 {
     stop = 1;
 }
@@ -153,7 +154,12 @@ int main(int argc, char *argv[])
     // Initialize the hidapi library
     hid_init();
     // Open the device using the VID, PID
-    handle = hid_open(0x0db0, 0x6a05, NULL);
+    handle = hid_open(0x0db0, 0xb130, NULL);
+    if (!handle) {
+        fprintf(stderr, "Unable to open device\n");
+        hid_exit();
+        exit(1);
+    }
     set_fan_mode(handle, fan_mode);
     // Start daemon if requested
     if (start_daemon) {

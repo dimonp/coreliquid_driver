@@ -3,7 +3,7 @@ Description=MSI MEG CoreLiquid S360 Daemon
 
 [Service]
 Type=simple
-ExecStart=/where/you/put/my_msi_driver -M 5 startd
+ExecStart=/home/ben/src/coreliquid_driver/src/my_msi_driver -M 0 startd
 ExecReload=/bin/kill -HUP $MAINPID
 ExecStop=/bin/kill -TERM $MAINPID
 KillMode=mixed
