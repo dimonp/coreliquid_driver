@@ -1,1 +1,3 @@
-src/my_msi_driver
+.cache
+.vscode
+build
