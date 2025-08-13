@@ -6,18 +6,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
-#include <hidapi/hidapi.h>
-#include <sensors/sensors.h>
 
-// Fan modes, unused
-typedef enum FanMode {
-    SILENT = 0,
-    BALANCE = 1,
-    GAME = 2,
-    CUSTOMIZE = 3,
-    DEFAULT = 4,
-    SMART = 5
-} FanMode;
+#include "coreliquid_s.h"
+#include "coreliquid.h"
+#include "sensors_wrap.h"
 
 // Flag to stop the daemon
 int stop = 0;
@@ -27,92 +19,24 @@ int stop = 0;
  * 
  * \param handle handle on the AIO device
  */
-void monitor_cpu_temperature(hid_device *handle) 
+void monitor_cpu_temperature(coreliquid_device* handle_s, coreliquid_device* handle_cl) 
 {
-    int nr, ret, res;
-    unsigned char buf[65];
-    const sensors_chip_name *chip;
-    const sensors_feature *feature;
-    const sensors_subfeature *subfeature;
-    int ifreq = 3000, itemp;
-    double temp;
-    
-    // Initialize the libsensor library
-    ret = sensors_init(NULL);
-    if (ret != 0) {
-        fprintf(stderr, "Error while initializing libsensor: %d\n", ret);
-        return;
-    }
-    
-    memset(buf,0,sizeof(buf));
-    buf[0] = 0xD0;
-    buf[1] = 0x85;
-    // The AIO doesn't care about CPU frequency to adapt fan speed. Set it to a dummy value.
-    buf[2] = ifreq & 0xFF;
-    buf[3] = (ifreq >> 8) & 0xFF;
-    // Loop on chips
-    nr = 0;
-    while (!stop && ((chip = sensors_get_detected_chips(NULL, &nr)) != NULL)) {
-        if (!strcmp(chip->prefix, "coretemp") || !strcmp(chip->prefix, "k10temp")) { // This chip gives CPU temperatures
-            // Loop on features for this chip
-            int nf = 0;
-            while (!stop && ((feature = sensors_get_features(chip, &nf)) != NULL)) {
-                if (feature->type == SENSORS_FEATURE_TEMP) {
-                    if (!strcmp(feature->name, "temp1") || !strcmp(feature->name, "Tctl")) { // This feature is the global core CPU temperature
-                        // Loop on subfeatures for this chip feature
-                        int ns = 0;
-                        while (!stop && ((subfeature = sensors_get_all_subfeatures(chip, feature, &ns)) != NULL)) {
-                            if (subfeature->type == SENSORS_SUBFEATURE_TEMP_INPUT) {
-                                // Temperature subfeature found, initialize the hidapi library
-                                res = hid_init();
-                                // Listen to temperature in an infinite loop
-                                while (!stop) {
-                                    ret = sensors_get_value(chip, subfeature->number, &temp);
-                                    if (ret == 0) {
-                                        itemp = (int)temp;
-                                        printf("CPU Temperature: %d°C\n", itemp);
-                                        // Set CPU status (cmd 0x85)
-                                        buf[4] = itemp & 0xFF;
-                                        buf[5] = (itemp >> 8) & 0xFF;
-                                        res = hid_write(handle, buf, 65);
-                                    }
-                                    // Wait 2s
-                                    usleep(2000*1000);
-                                }
-                            }
-                        }
-                    }
-                }
-            }
+    sensors_data_t data;
+
+    // Listen to temperature in an infinite loop
+    while (!stop) {
+        fetch_sensors_data(&data);
+
+        if (data.cpu_temp > 0 && data.cpu_freq > 0) {
+            set_oled_cpu_status(handle_cl, data.cpu_temp, data.cpu_freq);
+            usleep(10000);
+            send_cpu_temperature(handle_s, data.cpu_temp, data.cpu_freq);
         }
+
+        // Wait 2s
+        usleep(2000*1000);
     }
     
-    // Free resources
-    sensors_cleanup();
-}
-
-
-/**
- * Set the fan mode.
- * 
- * \param handle handle on the AIO device
- * \param fan_mode the choosen fan mode
- */
-void set_fan_mode(hid_device *handle, int fan_mode) 
-{
-    unsigned char buf[65];    
-
-    memset(buf,0,sizeof(buf));
-    buf[0] = 0xD0;
-    buf[1] = 0x40;
-    buf[2] = fan_mode;
-    buf[10] = fan_mode;
-    buf[18] = fan_mode;
-    buf[26] = fan_mode;
-    buf[34] = fan_mode;
-    hid_write(handle, buf, 65);
-    buf[1] = 0x41;
-    hid_write(handle, buf, 65);  
 }
 
 /**
@@ -129,12 +53,11 @@ void stopit(int sig)
  */
 int main(int argc, char *argv[]) 
 {
-    int i, fan_mode = SMART;
+    int i, fan_mode = FAN_MODE_SMART;
     int start_daemon = 0;
-    hid_device *handle = NULL;
     
     // Check options
-    for (i = 1; i < argc; i++) {
+    for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "-M")) {
             fan_mode = atoi(argv[++i]);
             if ((fan_mode < 0) || (fan_mode > 5) || (fan_mode == 3)) {
@@ -152,24 +75,42 @@ int main(int argc, char *argv[])
     }
     
     // Initialize the hidapi library
-    hid_init();
-    // Open the device using the VID, PID
-    handle = hid_open(0x0db0, 0xb130, NULL);
-    if (!handle) {
-        fprintf(stderr, "Unable to open device\n");
-        hid_exit();
+    init_coreliquid(start_daemon);
+    init_sensors();
+
+    coreliquid_device* handle_cl = open_fan_device();
+    if (!handle_cl) {
+        shutdown_coreliquid();
         exit(1);
     }
-    set_fan_mode(handle, fan_mode);
+
+    coreliquid_device* handle_s = open_s_device();
+    if (!handle_s) {
+        close_coreliquid_device(handle_cl);
+        shutdown_coreliquid();
+        exit(1);
+    }
+
+    detect_sensors();
+
+    set_fan_mode(handle_cl, fan_mode);
+    set_lcm_back_light(handle_s, LCM_DEFAULT_BRIGHTNESS);
+    set_lcm_direction(handle_s, LCM_DIR_DEFAULT);
+    set_display_mode(handle_s, SHOW_CPU_FREQ | SHOW_CPU_TEMP, STYLE_3);
+
     // Start daemon if requested
     if (start_daemon) {
         signal(SIGTERM, stopit);
-        monitor_cpu_temperature(handle);
+        signal(SIGINT, stopit);
+
+        monitor_cpu_temperature(handle_s, handle_cl);
     }
-    // Close the device
-    hid_close(handle);
-    // Finalize the hidapi library
-    hid_exit();
+
+    close_coreliquid_device(handle_s);
+    close_coreliquid_device(handle_cl);
+
+    shutdown_sensors();
+    shutdown_coreliquid();
     
     exit(0);
 }

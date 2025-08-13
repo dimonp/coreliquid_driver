@@ -1,10 +1,13 @@
 # coreliquid_driver
+
+This is a fork of the original [project](https://github.com/sarzeaud/coreliquid_driver) that doesn't work on my MEG S360. Probably because the interaction protocol has changed since its creation.
+
 A simple linux driver for MSI MEG Coreliquid S360 AIO watercooling
 
-Having unsuccessfully tried to use liquidctl (https://github.com/liquidctl/liquidctl) 
-to drive my MSI MEG coreliquid AIO watercooling under linux (specifically Debian 12), 
-I decided to build mine. I don't care about the display on this AIO, I just want it 
-to react to CPU temperature. I only allow 5 predefined modes to make the link between 
+Having unsuccessfully tried to use [liquidctl](https://github.com/liquidctl/liquidctl)
+to drive my MSI MEG coreliquid AIO watercooling under linux (specifically Debian 12),
+I decided to build mine. I don't care about the display on this AIO, I just want it
+to react to CPU temperature. I only allow 5 predefined modes to make the link between
 temperature and fan and pump speed:
     SILENT = 0,
     BALANCE = 1,
@@ -22,6 +25,7 @@ between temperature and fan speeds for three modes.
 ![GAME mode](pictures/game.png)
 
 ## Compilation
+
 You need to install libsensors-dev and libhidapi-dev to compile. Then, it is as simple as:
 
 ```bash
@@ -32,6 +36,7 @@ Here, I use libhidapi-hidraw, but I guess it would work as well with libhidapi-l
 I choose the primer because it seems to be the recommanded one these days.
 
 ## Usage
+
 my_msi_driver **-M** *mode* [ **startd** ]
 
 **-M** sets the cooling mode to *mode*.
@@ -39,6 +44,7 @@ my_msi_driver **-M** *mode* [ **startd** ]
 **startd** starts the driver daemon. This should rather be done through systemctl (see below).
 
 ## Daemon
+
 If you want this program to run as a daemon on your system, just:
 
 ```bash
