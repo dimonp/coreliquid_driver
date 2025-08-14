@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
     set_display_mode(handle_s, SHOW_CPU_FREQ | SHOW_CPU_TEMP, STYLE_3);
 
     // Start daemon if requested
-    if (!start_daemon) {
+    if (start_daemon) {
         signal(SIGTERM, stopit);
         signal(SIGINT, stopit);
 
