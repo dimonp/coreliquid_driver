@@ -174,13 +174,14 @@ struct host_text_message {
 * Sends CPU temperature and frequency information to the device.
 *
 * @param cl_handle Pointer to the coreliquid device handle.
-* @param cpu_temperature The temperature of the CPU to send.
-* @param cpu_frequqency The frequency of the CPU to send.
+* @param temperature The CPU temperature (Celsius).
+* @param frequency The CPU frequency (MHz).
+* @param usage The CPU usage (%).
 */
-void send_cpu_temperature(coreliquid_device *cl_handle, int cpu_temperature, int cpu_frequqency)
+void send_cpu_info(coreliquid_device *cl_handle, int temperature, int frequency)
 {
     struct hw_info_message message;
-    memset(&message.raw_buffer, 0, sizeof(message.raw_buffer));    
+    memset(&message.raw_buffer, 0, sizeof(message.raw_buffer));
 
     message = (struct hw_info_message) {
         .data = {
@@ -191,8 +192,8 @@ void send_cpu_temperature(coreliquid_device *cl_handle, int cpu_temperature, int
                 .length = sizeof(message.data.payload),
             },
             .payload = {
-                .cpu_temp = cpu_temperature,
-                .cpu_freq = cpu_frequqency,
+                .cpu_temp = temperature,
+                .cpu_freq = frequency,
             }
         }
     };
@@ -325,10 +326,11 @@ void set_display_mode(coreliquid_device *cl_handle, display_features_t features,
 
 /**
 * Opens a Coreliquid S* device by searching for supported VID/PID combinations.
-* 
+*
 * @return Pointer to the opened device handle if successful; NULL otherwise.
 */
-coreliquid_device* open_s_device() {
+coreliquid_device* open_s_device()
+{
     coreliquid_device* cl_handle = NULL;
     cl_handle = search_and_open_device(supported_vids, ARRAY_SIZE(supported_vids), supported_pids, ARRAY_SIZE(supported_pids));
     if (!cl_handle) {

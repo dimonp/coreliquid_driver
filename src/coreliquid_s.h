@@ -44,7 +44,7 @@ typedef enum display_features display_features_t;
 #define DEFAULT_DISPLAY_FEATURES (SHOW_CPU_TEMP | SHOW_PUMP_FAN | SHOW_RADIATOR_FAN)
 
 
-void send_cpu_temperature(coreliquid_device *cl_handle, int cpu_temperature, int cpu_frequqency);
+void send_cpu_info(coreliquid_device *cl_handle, int temperature, int frequency);
 void set_lcm_back_light(coreliquid_device *handle, int brightness);
 void set_lcm_direction(coreliquid_device *handle, lcm_dir_t direction);
 void send_host_text(coreliquid_device *handle, const char *text);

@@ -3,6 +3,7 @@
 
 #include "sensors_wrap.h"
 #include "coreliquid_hid.h"
+#include <sys/time.h>
 
 static struct {
     const sensors_chip_name *name_cpu_temp;
@@ -18,16 +19,16 @@ static struct {
 
 
 int detect_cpu_temp_sensor(
-    const sensors_chip_name *chip, 
-    const sensors_feature *feature, 
-    const sensors_subfeature *subfeature) 
+    const sensors_chip_name *chip,
+    const sensors_feature *feature,
+    const sensors_subfeature *subfeature)
 {
     if (strcmp(chip->prefix, "coretemp") && strcmp(chip->prefix, "k10temp"))
         return 0;
 
-    if (feature->type != SENSORS_FEATURE_TEMP) 
+    if (feature->type != SENSORS_FEATURE_TEMP)
         return 0;
-        
+
     if (strcmp(feature->name, "temp1") && strcmp(feature->name, "Tctl"))
         return 0;
 
@@ -35,45 +36,45 @@ int detect_cpu_temp_sensor(
         return 0;
 
     sensors_bank.name_cpu_temp = chip;
-    sensors_bank.idx_cpu_temp = feature->number;
+    sensors_bank.idx_cpu_temp = subfeature->number;
 
     return 1;
 }
 
 int detect_gpu_temp_sensor(
-    const sensors_chip_name *chip, 
-    const sensors_feature *feature, 
-    const sensors_subfeature *subfeature) 
+    const sensors_chip_name *chip,
+    const sensors_feature *feature,
+    const sensors_subfeature *subfeature)
 {
     if (strcmp(chip->prefix, "amdgpu"))
         return 0;
 
-    if (feature->type != SENSORS_FEATURE_TEMP) 
+    if (feature->type != SENSORS_FEATURE_TEMP)
         return 0;
-        
-    if (strcmp(feature->name, "temp3"))
+
+    if (strcmp(feature->name, "temp2"))
         return 0;
 
     if (subfeature->type != SENSORS_SUBFEATURE_TEMP_INPUT)
         return 0;
 
     sensors_bank.name_gpu_temp = chip;
-    sensors_bank.idx_cpu_temp = feature->number;
+    sensors_bank.idx_gpu_temp = subfeature->number;
 
     return 1;
 }
 
 int detect_gpu_freq_sensor(
-    const sensors_chip_name *chip, 
-    const sensors_feature *feature, 
-    const sensors_subfeature *subfeature) 
+    const sensors_chip_name *chip,
+    const sensors_feature *feature,
+    const sensors_subfeature *subfeature)
 {
     if (strcmp(chip->prefix, "amdgpu"))
         return 0;
 
-    if (feature->type != SENSORS_FEATURE_FREQ) 
+    if (feature->type != SENSORS_FEATURE_FREQ)
         return 0;
-        
+
     if (strcmp(feature->name, "freq1"))
         return 0;
 
@@ -81,7 +82,7 @@ int detect_gpu_freq_sensor(
         return 0;
 
     sensors_bank.name_gpu_freq = chip;
-    sensors_bank.idx_gpu_freq = feature->number;
+    sensors_bank.idx_gpu_freq = subfeature->number;
 
     return 1;
 }
@@ -104,7 +105,7 @@ void shutdown_sensors()
     memset(&sensors_bank, 0, sizeof(sensors_bank));
 }
 
-void detect_sensors() 
+void detect_sensors()
 {
     const sensors_chip_name *chip;
     int chip_nr = 0;
@@ -117,7 +118,7 @@ void detect_sensors()
 #ifdef _DEBUG
         		const char *adap = sensors_get_adapter_name(&chip->bus);
                 printf("Chip: %s: %s\n", chip->prefix, adap);
-#endif                
+#endif
 
         // Iterate through features of the current chip
         while ((feature = sensors_get_features(chip, &feature_nr)) != NULL) {
@@ -126,29 +127,30 @@ void detect_sensors()
 
 #ifdef _DEBUG
                 const char *label = sensors_get_label(chip, feature);
-                printf("\tFeature: %s\n", label);
-#endif                
+                printf("\tFeature: %s (%d)\n", label, feature->type);
+#endif
 
             // Iterate through subfeatures of the current feature
             while ((subfeature = sensors_get_all_subfeatures(chip, feature, &subfeature_nr)) != NULL) {
 #ifdef _DEBUG
-                printf("\t\tSubfeature: %s\n", subfeature->name);
-#endif                
+                printf("\t\tSubfeature: %s (%d)\n", subfeature->name, subfeature->type);
+#endif
 
                 detect_cpu_temp_sensor(chip, feature, subfeature);
+                detect_gpu_temp_sensor(chip, feature, subfeature);
+                detect_gpu_freq_sensor(chip, feature, subfeature);
             }
         }
-    }    
+    }
 }
 
-int get_cpu_frequency() 
+int get_cpu_frequency()
 {
-    static char *path = "/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq";
     long long current_freq;
     int result = 0;
     FILE *fp;
 
-    fp = fopen(path, "r");
+    fp = fopen("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq", "r");
     if (fp == NULL) {
         return 0;
     }
@@ -163,12 +165,45 @@ int get_cpu_frequency()
     return result;
 }
 
+int get_cpu_usage()
+{
+    static struct timeval last_time;
+    static long long last_total_idle, last_total;
+
+    struct timeval current_time;
+    long long total_user, total_nice, total_system, total_idle, total;
+
+    int result = 0;
+
+    gettimeofday(&current_time, NULL);
+
+    FILE *fp = fopen("/proc/stat", "r");
+    if (fp == NULL) {
+        return 0;
+    }
+
+    if (fscanf(fp, "cpu %lld %lld %lld %lld", &total_user, &total_nice, &total_system, &total_idle) == 4) {
+        total = total_user + total_nice + total_system + total_idle;
+
+        if (last_total != 0) {
+            result = 100 - ((total_idle - last_total_idle) * 100 / (total - last_total));
+        }
+
+        last_total = total;
+        last_total_idle = total_idle;
+    }
+
+    fclose(fp);
+
+    return result;
+}
+
 /**
  * Fetches various sensor data and populates the provided data structure.
- * 
+ *
  * @param data Pointer to the sensors_data_t structure.
  */
-void fetch_sensors_data(sensors_data_t *data) 
+void fetch_sensors_data(sensors_data_t *data)
 {
     int ret;
     double value;
@@ -196,12 +231,12 @@ void fetch_sensors_data(sensors_data_t *data)
     if (sensors_bank.name_gpu_freq != NULL) {
         ret = sensors_get_value(sensors_bank.name_gpu_freq, sensors_bank.idx_gpu_freq, &value);
         if (ret == 0) {
-            data->gpu_freq = (int)value;
+            data->gpu_freq = (int)(value / 1000000); // to MHz
         }
     }
 
 #ifdef _DEBUG
-    loginfo("Sensors data: cpu_freq=%d, cpu_temp=%d \n", data->cpu_freq, data->cpu_temp);
+    loginfo("Sensors data: cpu_freq=%d, cpu_temp=%d\n", data->cpu_freq, data->cpu_temp);
     loginfo("Sensors data: gpu_freq=%d, gpu_temp=%d\n", data->gpu_freq, data->gpu_temp);
-#endif                
+#endif
 }

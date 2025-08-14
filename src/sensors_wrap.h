@@ -4,6 +4,7 @@
 struct sensors_data {
     int cpu_temp;
     int cpu_freq;
+    int cpu_usage;
     int gpu_temp;
     int gpu_freq;
 };

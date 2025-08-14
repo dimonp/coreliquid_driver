@@ -77,15 +77,16 @@ struct message_request {
     };
 };
 
+// GET_COOLER_STATUS
 struct fan_status {
     struct message_header header;
-    uint16_t fan_speed_1;
+    uint16_t fan_speed_1; // Raditor fan
     uint16_t fan_speed_2;
     uint16_t fan_speed_3;
-    uint16_t fan_speed_4;
-    uint16_t fan_speed_5;
+    uint16_t fan_speed_4; // Water block fan
+    uint16_t fan_speed_5; // Pump fan
     uint16_t temperature_in;
-    uint16_t temperature_out;
+    uint16_t temperature_out;  // Liquid temp
     uint16_t temperature_sensor_1;
     uint16_t temperature_sensor_2;
     uint16_t fan_duty_1;
@@ -101,7 +102,7 @@ struct message_fan_status {
     };
 };
 
-
+// SET_FAN_DUTY_MODE
 #define CONFIG_COUNT_FAN 7
 struct config_fan_duty {
     struct message_header header;
@@ -123,6 +124,7 @@ struct message_fan_duty {
     };
 };
 
+// SET_FAN_TEMPERATURE_MODE
 struct config_fan_temperature {
     struct message_header header;
     uint8_t fan_mode_1;
@@ -143,6 +145,7 @@ struct message_fan_temperature {
     };
 };
 
+// SET_OLED_CPU_STATUS
 struct config_oled_cpu {
     struct message_header header;
     uint16_t cpu_freq;
@@ -155,6 +158,7 @@ struct message_oled_cpu {
     };
 };
 
+// SET_OLED_SHOW_CLOCK
 struct config_show_clock {
     struct message_header header;
     uint8_t style;
@@ -185,7 +189,7 @@ const uint8_t fan_duty_preset_5[CONFIG_COUNT_FAN] = {20, 40, 50, 100, 100, 100, 
 * @param fan_speed Pointer to store the fan speed value (in RPM).
 * @return 1 if the cooler status was successfully retrieved, 0 otherwise.
 */
-int get_cooler_status(coreliquid_device* cl_handle, int* temperature_in, int* temperature_out, int* fan_speed) 
+int get_cooler_status(coreliquid_device* cl_handle, int* temperature_in, int* temperature_out, int* fan_speed)
 {
     struct message_fan_status message_input;
     struct message_request message;
@@ -201,8 +205,8 @@ int get_cooler_status(coreliquid_device* cl_handle, int* temperature_in, int* te
     }
 
     usleep(10000);
-   
-    if (read_input(cl_handle, message_input.raw_buffer, sizeof(message_input.raw_buffer)) 
+
+    if (read_input(cl_handle, message_input.raw_buffer, sizeof(message_input.raw_buffer))
             && message_input.report.header.report_id == GET_COOLER_STATUS) {
 
         *temperature_in = message_input.report.temperature_in;
@@ -291,7 +295,7 @@ void set_fan_temperature_mode(coreliquid_device* cl_handle, uint8_t fan_mode)
 {
     struct message_fan_temperature message;
     memset(&message.raw_buffer, 0, sizeof(message.raw_buffer));
-    
+
     message = (struct message_fan_temperature ) {
         .config = {
             .header = {
@@ -360,7 +364,8 @@ void set_oled_show_clock(coreliquid_device* cl_handle, uint8_t style)
 *
 * @return Pointer to the opened coreliquid_device handle if successful, 0 otherwise.
 */
-coreliquid_device* open_fan_device() {
+coreliquid_device* open_fan_device()
+{
     coreliquid_device* cl_handle = NULL;
     cl_handle = search_and_open_device(supported_vids, ARRAY_SIZE(supported_vids), supported_pids, ARRAY_SIZE(supported_pids));
     if (!cl_handle) {

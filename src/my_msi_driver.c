@@ -1,4 +1,4 @@
-// Compilation: 
+// Compilation:
 // gcc my_msi_driver.c -lhidapi-hidraw -lsensors -o /where/you/want/my_msi_driver
 
 #include <stdio.h>
@@ -16,10 +16,10 @@ int stop = 0;
 
 /**
  * Monitor the CPU temperature and send it to the AIO.
- * 
+ *
  * \param handle handle on the AIO device
  */
-void monitor_cpu_temperature(coreliquid_device* handle_s, coreliquid_device* handle_cl) 
+void monitor_cpu_temperature(coreliquid_device* handle_s, coreliquid_device* handle_cl)
 {
     sensors_data_t data;
 
@@ -30,13 +30,13 @@ void monitor_cpu_temperature(coreliquid_device* handle_s, coreliquid_device* han
         if (data.cpu_temp > 0 && data.cpu_freq > 0) {
             set_oled_cpu_status(handle_cl, data.cpu_temp, data.cpu_freq);
             usleep(10000);
-            send_cpu_temperature(handle_s, data.cpu_temp, data.cpu_freq);
+            send_cpu_info(handle_s, data.cpu_temp, data.cpu_freq);
         }
 
         // Wait 2s
         usleep(2000*1000);
     }
-    
+
 }
 
 /**
@@ -51,11 +51,11 @@ void stopit(int sig)
 /**
  * Main program
  */
-int main(int argc, char *argv[]) 
+int main(int argc, char *argv[])
 {
     int i, fan_mode = FAN_MODE_SMART;
     int start_daemon = 0;
-    
+
     // Check options
     for (int i = 1; i < argc; i++) {
         if (!strcmp(argv[i], "-M")) {
@@ -73,8 +73,8 @@ int main(int argc, char *argv[])
         else if (!strcmp(argv[i], "startd"))
             start_daemon = 1;
     }
-    
-    // Initialize the hidapi library
+
+    // Initialize the subsystems
     init_coreliquid(start_daemon);
     init_sensors();
 
@@ -99,7 +99,7 @@ int main(int argc, char *argv[])
     set_display_mode(handle_s, SHOW_CPU_FREQ | SHOW_CPU_TEMP, STYLE_3);
 
     // Start daemon if requested
-    if (start_daemon) {
+    if (!start_daemon) {
         signal(SIGTERM, stopit);
         signal(SIGINT, stopit);
 
@@ -111,6 +111,6 @@ int main(int argc, char *argv[])
 
     shutdown_sensors();
     shutdown_coreliquid();
-    
+
     exit(0);
 }

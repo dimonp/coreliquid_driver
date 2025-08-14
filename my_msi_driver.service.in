@@ -3,7 +3,7 @@ Description=MSI MEG CoreLiquid S360 Daemon
 
 [Service]
 Type=simple
-ExecStart=/usr/local/bin/my_msi_driver -M 5 startd
+ExecStart=@INSTALL_PREFIX@/bin/my_msi_driver -M 5 startd
 StandardOutput=journal
 StandardError=journal
 ExecReload=/bin/kill -HUP $MAINPID

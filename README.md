@@ -29,7 +29,11 @@ between temperature and fan speeds for three modes.
 You need to install libsensors-dev and libhidapi-dev to compile. Then, it is as simple as:
 
 ```bash
-gcc my_msi_driver.c -lhidapi-hidraw -lsensors -o /where/you/want/my_msi_driver
+mkdir build
+cd build
+cmake -DCMAKE_BUILD_TYPE=Release ..
+cmake --build . --config Release
+
 ```
 
 Here, I use libhidapi-hidraw, but I guess it would work as well with libhidapi-libusb0.
@@ -49,6 +53,8 @@ If you want this program to run as a daemon on your system, just:
 
 ```bash
 sudo cp my_msi_driver.service /etc/systemd/system/
+or in build folder
+sudo cmake --install . --prefix "/usr/local"
 ```
 
 In this file, adapt the ExecStart path for where you put the executable, and choose
