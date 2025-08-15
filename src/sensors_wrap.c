@@ -3,7 +3,6 @@
 
 #include "sensors_wrap.h"
 #include "coreliquid_hid.h"
-#include <sys/time.h>
 
 static struct {
     const sensors_chip_name *name_cpu_temp;
@@ -87,7 +86,7 @@ int detect_gpu_freq_sensor(
     return 1;
 }
 
-void init_sensors()
+void init_sensors(void)
 {
     memset(&sensors_bank, 0, sizeof(sensors_bank));
 
@@ -97,15 +96,15 @@ void init_sensors()
         return;
     }
 
-};
+}
 
-void shutdown_sensors()
+void shutdown_sensors(void)
 {
     sensors_cleanup();
     memset(&sensors_bank, 0, sizeof(sensors_bank));
 }
 
-void detect_sensors()
+void detect_sensors(void)
 {
     const sensors_chip_name *chip;
     int chip_nr = 0;
@@ -144,7 +143,7 @@ void detect_sensors()
     }
 }
 
-int get_cpu_frequency()
+int get_cpu_frequency(void)
 {
     long long current_freq;
     int result = 0;
@@ -165,17 +164,11 @@ int get_cpu_frequency()
     return result;
 }
 
-int get_cpu_usage()
+int get_cpu_usage(void)
 {
-    static struct timeval last_time;
     static long long last_total_idle, last_total;
-
-    struct timeval current_time;
     long long total_user, total_nice, total_system, total_idle, total;
-
     int result = 0;
-
-    gettimeofday(&current_time, NULL);
 
     FILE *fp = fopen("/proc/stat", "r");
     if (fp == NULL) {
@@ -183,6 +176,7 @@ int get_cpu_usage()
     }
 
     if (fscanf(fp, "cpu %lld %lld %lld %lld", &total_user, &total_nice, &total_system, &total_idle) == 4) {
+
         total = total_user + total_nice + total_system + total_idle;
 
         if (last_total != 0) {

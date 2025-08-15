@@ -23,21 +23,21 @@ typedef enum monitor_style monitor_style_t;
 
 #define DISPLAY_FEATURES_COUNT 15
 enum display_features {
-    SHOW_CPU_FREQ           = 0b0000000000000001,
-    SHOW_CPU_TEMP           = 0b0000000000000010,
-    SHOW_GPU_FREQ           = 0b0000000000000100,
-    SHOW_GPU_USAGE          = 0b0000000000001000,
-    SHOW_PUMP_FAN           = 0b0000000000010000,
-    SHOW_RADIATOR_FAN       = 0b0000000000100000,
-    SHOW_WATER_BLOCK_FAN    = 0b0000000001000000,
-    SHOW_PSU_FAN            = 0b0000000010000000,
-    SHOW_LIQUID_TEMP        = 0b0000000100000000,
-    SHOW_FPS                = 0b0000001000000000,
-    SHOW_PSU_TEMP           = 0b0000010000000000,
-    SHOW_PSU_OUTPUT_WATTAGE = 0b0000100000000000,
-    SHOW_PSU_EFFICIENCY     = 0b0001000000000000,
-    SHOW_CPU_USAGE          = 0b0010000000000000,
-    SHOW_GPU_TEMP           = 0b0100000000000000
+    SHOW_CPU_FREQ           = 0x0001,
+    SHOW_CPU_TEMP           = 0x0002,
+    SHOW_GPU_FREQ           = 0x0004,
+    SHOW_GPU_USAGE          = 0x0008,
+    SHOW_PUMP_FAN           = 0x0010,
+    SHOW_RADIATOR_FAN       = 0x0020,
+    SHOW_WATER_BLOCK_FAN    = 0x0040,
+    SHOW_PSU_FAN            = 0x0080,
+    SHOW_LIQUID_TEMP        = 0x0100,
+    SHOW_FPS                = 0x0200,
+    SHOW_PSU_TEMP           = 0x0400,
+    SHOW_PSU_OUTPUT_WATTAGE = 0x0800,
+    SHOW_PSU_EFFICIENCY     = 0x1000,
+    SHOW_CPU_USAGE          = 0x2000,
+    SHOW_GPU_TEMP           = 0x4000
 };
 typedef enum display_features display_features_t;
 
@@ -47,8 +47,11 @@ typedef enum display_features display_features_t;
 void send_cpu_info(coreliquid_device *cl_handle, int temperature, int frequency);
 void set_lcm_back_light(coreliquid_device *handle, int brightness);
 void set_lcm_direction(coreliquid_device *handle, lcm_dir_t direction);
-void send_host_text(coreliquid_device *handle, const char *text);
+int send_host_msg(coreliquid_device *handle, const char *text);
 void set_display_mode(coreliquid_device *cl_handle, display_features_t features, monitor_style_t style);
-coreliquid_device* open_s_device();
+void set_sync_mode(coreliquid_device *handle, int mode);
+void set_temperature_unit(coreliquid_device *handle, int unit);
+
+coreliquid_device* open_s_device(void);
 
 #endif // _CORELIQUID_S__H

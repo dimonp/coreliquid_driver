@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 
 #include "coreliquid_hid.h"
@@ -51,7 +52,6 @@ enum command_code_s360 {
     GET_DISPLAY_MODE         = 0x52,
     GET_DISPLAY_MODE_R       = 0x53,
 };
-typedef enum command_code_mcu command_code_mcu_t;
 
 #pragma pack(1)
 
@@ -173,12 +173,12 @@ struct host_text_message {
 /**
 * Sends CPU temperature and frequency information to the device.
 *
-* @param cl_handle Pointer to the coreliquid device handle.
+* @param handle Pointer to the coreliquid device handle.
 * @param temperature The CPU temperature (Celsius).
 * @param frequency The CPU frequency (MHz).
 * @param usage The CPU usage (%).
 */
-void send_cpu_info(coreliquid_device *cl_handle, int temperature, int frequency)
+void send_cpu_info(coreliquid_device *handle, int temperature, int frequency)
 {
     struct hw_info_message message;
     memset(&message.raw_buffer, 0, sizeof(message.raw_buffer));
@@ -198,7 +198,7 @@ void send_cpu_info(coreliquid_device *cl_handle, int temperature, int frequency)
         }
     };
 
-    set_report(cl_handle, message.raw_buffer, sizeof(message.raw_buffer));
+    set_report(handle, message.raw_buffer, sizeof(message.raw_buffer));
 }
 
 /**
@@ -263,7 +263,7 @@ void set_lcm_direction(coreliquid_device *handle, lcm_dir_t direction)
  * @param handle Pointer to the coreliquid device handle.
  * @param text The text to be sent to the device.
  */
-void send_host_text(coreliquid_device *handle, const char *text)
+int send_host_msg(coreliquid_device *handle, const char *text)
 {
     struct host_text_message message;
     memset(&message.raw_buffer, 0, sizeof(message.raw_buffer));
@@ -280,23 +280,50 @@ void send_host_text(coreliquid_device *handle, const char *text)
     };
     strncpy(message.data.payload.text, text, sizeof(message.data.payload.text));
 
-    set_report(handle, message.raw_buffer, sizeof(message.raw_buffer));
+    return set_report(handle, message.raw_buffer, sizeof(message.raw_buffer));
+}
+
+/**
+* Sets the synchronization mode for the CoreLiquid device.
+*
+* @param handle Pointer to the CoreLiquid device handle.
+* @param mode The synchronization mode to set.
+*/
+void set_sync_mode(coreliquid_device *handle, int mode)
+{
+    char msg_text[55];
+    sprintf(msg_text, "55AASETSYNCMODE%02d5AA5", mode);
+    send_host_msg(handle, msg_text);
+}
+
+/**
+ * Sets the temperature unit for the coreliquid device.
+ *
+ * @param handle Pointer to the coreliquid device handle.
+ * @param unit The temperature unit to set (0 for Celsius, non-zero for Fahrenheit).
+ */
+void set_temperature_unit(coreliquid_device *handle, int unit)
+{
+    if (unit != 0) {
+        send_host_msg(handle, "55AASETTEMP15AA5");
+    } else {
+        send_host_msg(handle, "55AASETTEMP05AA5");
+    };
 }
 
 /**
 * Sets the hardware display mode for a Coreliquid device.
 *
-* @param cl_handle Pointer to the CoreLiquid device handle.
+* @param handle Pointer to the CoreLiquid device handle.
 * @param features Display features to be set (bitmask).
 * @param style Monitor style to be applied to the features.
 */
-void set_display_mode(coreliquid_device *cl_handle, display_features_t features, monitor_style_t style)
+void set_display_mode(coreliquid_device *handle, display_features_t features, monitor_style_t style)
 {
     struct hw_monitor_message message;
     memset(&message.raw_buffer, 0, sizeof(message.raw_buffer));
 
     uint8_t features_buf[DISPLAY_FEATURES_COUNT] = { 0 };
-    size_t i = 0;
     for (size_t i = 0 ; (i < sizeof(features_buf)) && features; ++i, features >>= 1) {
         if (features & 1) {
             features_buf[i] = style;
@@ -320,7 +347,7 @@ void set_display_mode(coreliquid_device *cl_handle, display_features_t features,
     };
     memcpy(&(message.data.payload.show_info), features_buf, sizeof(features_buf));
 
-    set_report(cl_handle, message.raw_buffer, sizeof(message.raw_buffer));
+    set_report(handle, message.raw_buffer, sizeof(message.raw_buffer));
 }
 
 
@@ -329,13 +356,13 @@ void set_display_mode(coreliquid_device *cl_handle, display_features_t features,
 *
 * @return Pointer to the opened device handle if successful; NULL otherwise.
 */
-coreliquid_device* open_s_device()
+coreliquid_device* open_s_device(void)
 {
-    coreliquid_device* cl_handle = NULL;
-    cl_handle = search_and_open_device(supported_vids, ARRAY_SIZE(supported_vids), supported_pids, ARRAY_SIZE(supported_pids));
-    if (!cl_handle) {
+    coreliquid_device* handle = NULL;
+    handle = search_and_open_device(supported_vids, ARRAY_SIZE(supported_vids), supported_pids, ARRAY_SIZE(supported_pids));
+    if (!handle) {
         logerror("Failed to open Coreliquid S device.\n");
     }
 
-    return cl_handle;
+    return handle;
 }

@@ -364,7 +364,7 @@ void set_oled_show_clock(coreliquid_device* cl_handle, uint8_t style)
 *
 * @return Pointer to the opened coreliquid_device handle if successful, 0 otherwise.
 */
-coreliquid_device* open_fan_device()
+coreliquid_device* open_fan_device(void)
 {
     coreliquid_device* cl_handle = NULL;
     cl_handle = search_and_open_device(supported_vids, ARRAY_SIZE(supported_vids), supported_pids, ARRAY_SIZE(supported_pids));

@@ -18,6 +18,6 @@ void set_fan_mode(coreliquid_device* cl_handle, fan_mode_t fan_mode);
 void set_oled_cpu_status(coreliquid_device* cl_handle, int temperature, int frequency);
 void set_oled_show_clock(coreliquid_device* cl_handle, uint8_t style);
 
-coreliquid_device* open_fan_device();
+coreliquid_device* open_fan_device(void);
 
 #endif // _CORELIQUID__H

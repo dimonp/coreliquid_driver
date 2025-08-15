@@ -10,9 +10,9 @@ struct sensors_data {
 };
 typedef struct sensors_data sensors_data_t;
 
-void init_sensors();
-void shutdown_sensors();
-void detect_sensors();
+void init_sensors(void);
+void shutdown_sensors(void);
+void detect_sensors(void);
 void fetch_sensors_data(sensors_data_t *data);
 
 

@@ -14,7 +14,7 @@ FetchContent_MakeAvailable(hidapi)
 
 find_library(SENSORS_LIBRARY NAMES sensors)
 
-add_executable(my_msi_driver 
+add_executable(my_msi_driver
     src/my_msi_driver.c
     src/coreliquid_hid.c src/coreliquid_hid.h
     src/coreliquid.c src/coreliquid.h
@@ -22,6 +22,7 @@ add_executable(my_msi_driver
     src/sensors_wrap.c src/sensors_wrap.h
 )
 
+target_compile_options(my_msi_driver PRIVATE -Wall -Wextra -Wpedantic -Werror)
 target_compile_definitions(my_msi_driver PRIVATE $<$<CONFIG:Debug>:_DEBUG=1>)
 add_compile_options($<$<CONFIG:Release>:-O3>)
 

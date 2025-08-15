@@ -43,7 +43,7 @@ void monitor_cpu_temperature(coreliquid_device* handle_s, coreliquid_device* han
  * Signal handler to stop the daemon.
  * Can take up to 2s to stop (sleeping time between temperature reads).
  */
-void stopit(int sig)
+void stopit(__attribute__((unused)) int sig)
 {
     stop = 1;
 }
@@ -53,7 +53,7 @@ void stopit(int sig)
  */
 int main(int argc, char *argv[])
 {
-    int i, fan_mode = FAN_MODE_SMART;
+    int fan_mode = FAN_MODE_SMART;
     int start_daemon = 0;
 
     // Check options
@@ -96,6 +96,7 @@ int main(int argc, char *argv[])
     set_fan_mode(handle_cl, fan_mode);
     set_lcm_back_light(handle_s, LCM_DEFAULT_BRIGHTNESS);
     set_lcm_direction(handle_s, LCM_DIR_DEFAULT);
+    set_temperature_unit(handle_s, 1);
     set_display_mode(handle_s, SHOW_CPU_FREQ | SHOW_CPU_TEMP, STYLE_3);
 
     // Start daemon if requested
