@@ -73,9 +73,9 @@ void resumeit(__attribute__((unused)) int sig)
  */
 int main(int argc, char *argv[])
 {
+    int exit_status = EXIT_SUCCESS;
     int fan_mode = FAN_MODE_SMART;
     int start_daemon = 0;
-    int exit_status = EXIT_SUCCESS;
     int opt;
 
      while ((opt = getopt(argc, argv, "M:")) != -1) {
@@ -113,15 +113,14 @@ int main(int argc, char *argv[])
 
     coreliquid_device* handle_cl = open_device_aio();
     if (!handle_cl) {
-        shutdown_coreliquid();
-        exit(EXIT_FAILURE);
+        exit_status = EXIT_FAILURE;
+        goto exit_shutdown;
     }
 
     coreliquid_device* handle_s = open_s_device();
     if (!handle_s) {
-        close_coreliquid_device(handle_cl);
-        shutdown_coreliquid();
-        exit(EXIT_FAILURE);
+        exit_status = EXIT_FAILURE;
+        goto exit_free_cl;
     }
 
     detect_sensors();
@@ -160,8 +159,10 @@ int main(int argc, char *argv[])
 
 exit_free:
     close_coreliquid_device(handle_s);
+exit_free_cl:
     close_coreliquid_device(handle_cl);
 
+exit_shutdown:
     shutdown_sensors();
     shutdown_coreliquid();
 
