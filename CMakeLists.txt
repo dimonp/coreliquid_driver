@@ -22,9 +22,11 @@ add_executable(my_msi_driver
     src/sensors_wrap.c src/sensors_wrap.h
 )
 
-target_compile_options(my_msi_driver PRIVATE -Wall -Wextra -Wpedantic -Werror)
 target_compile_definitions(my_msi_driver PRIVATE $<$<CONFIG:Debug>:_DEBUG=1>)
-add_compile_options($<$<CONFIG:Release>:-O3>)
+target_compile_options(my_msi_driver PRIVATE -Wall -Wextra -Wpedantic -Werror)
+target_compile_options(my_msi_driver PRIVATE $<$<CONFIG:Debug>:-fsanitize=address>)
+target_compile_options(my_msi_driver PRIVATE $<$<CONFIG:Release>:-O3>)
+target_link_options(my_msi_driver PRIVATE $<$<CONFIG:Debug>:-fsanitize=address>)
 
 target_link_libraries(my_msi_driver
     PRIVATE ${SENSORS_LIBRARY}
@@ -40,3 +42,7 @@ configure_file(
 install(TARGETS my_msi_driver DESTINATION bin)
 install(FILES "${CMAKE_CURRENT_BINARY_DIR}/my_msi_driver.service"
         DESTINATION "/etc/systemd/system/")
+install(FILES "${CMAKE_CURRENT_SOURCE_DIR}/my_msi_driver_sleep.sh"
+        PERMISSIONS OWNER_EXECUTE OWNER_WRITE OWNER_READ GROUP_READ WORLD_READ
+        DESTINATION "/usr/lib/systemd/system-sleep/")
+

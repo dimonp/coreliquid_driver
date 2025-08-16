@@ -13,11 +13,13 @@ enum fan_mode {
 };
 typedef enum fan_mode fan_mode_t;
 
-int get_cooler_status(coreliquid_device* cl_handle, int* temperature_in, int* temperature_out, int* fan_speed);
-void set_fan_mode(coreliquid_device* cl_handle, fan_mode_t fan_mode);
-void set_oled_cpu_status(coreliquid_device* cl_handle, int temperature, int frequency);
-void set_oled_show_clock(coreliquid_device* cl_handle, uint8_t style);
+int get_cooler_status(coreliquid_device* handle, int* temperature_in, int* temperature_out, int* fan_speed);
+void set_fan_mode(coreliquid_device* handle, fan_mode_t fan_mode);
+void set_oled_cpu_status(coreliquid_device* handle, int temperature, int frequency);
+void set_oled_show_clock(coreliquid_device* handle, uint8_t style);
+int get_model_index(coreliquid_device* handle, int* model_idx);
+int get_fw_version_ldprom(coreliquid_device* handle, int* version_major, int* version_minor);
 
-coreliquid_device* open_fan_device(void);
+coreliquid_device* open_device_aio(void);
 
 #endif // _CORELIQUID__H

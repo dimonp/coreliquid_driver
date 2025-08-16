@@ -5,7 +5,7 @@
 #include "coreliquid_s.h"
 
 #define HID_REPORT_SIZE 64
-#define REPORT_ID_S360 1
+#define REPORT_ID_S 1
 
 #define MAGIC_CODE_MCU 0x5a6b
 
@@ -23,6 +23,7 @@ enum display_mode {
     DISPLAY_MODE_DYNAMIC    = 7,
 };
 
+// command codes for reports with id = 0x01
 enum command_code_s360 {
     GET_DEV_ID               = 0x10,
     GET_DEV_ID_R             = 0x11,
@@ -186,7 +187,7 @@ void send_cpu_info(coreliquid_device *handle, int temperature, int frequency)
     message = (struct hw_info_message) {
         .data = {
             .header = {
-                .report_id = REPORT_ID_S360,
+                .report_id = REPORT_ID_S,
                 .magic_two = MAGIC_CODE_MCU,
                 .command_code = SEND_HOST_CPU_INFO,
                 .length = sizeof(message.data.payload),
@@ -215,7 +216,7 @@ void set_lcm_back_light(coreliquid_device *handle, int brightness)
     message = (struct back_light_message) {
         .data = {
             .header = {
-                .report_id = REPORT_ID_S360,
+                .report_id = REPORT_ID_S,
                 .magic_two = MAGIC_CODE_MCU,
                 .command_code = SET_LCM_BACKLIGHT,
                 .length = sizeof(message.data.payload),
@@ -243,7 +244,7 @@ void set_lcm_direction(coreliquid_device *handle, lcm_dir_t direction)
     message = (struct lcm_direction_message) {
         .data = {
             .header = {
-                .report_id = REPORT_ID_S360,
+                .report_id = REPORT_ID_S,
                 .magic_two = MAGIC_CODE_MCU,
                 .command_code = SET_LCM_DIR,
                 .length = sizeof(message.data.payload),
@@ -271,14 +272,14 @@ int send_host_msg(coreliquid_device *handle, const char *text)
     message = (struct host_text_message) {
         .data = {
             .header = {
-                .report_id = REPORT_ID_S360,
+                .report_id = REPORT_ID_S,
                 .magic_two = MAGIC_CODE_MCU,
                 .command_code = SEND_HOST_MSG,
                 .length = sizeof(message.data.payload),
             },
         }
     };
-    strncpy(message.data.payload.text, text, sizeof(message.data.payload.text));
+    strncpy(message.data.payload.text, text, sizeof(message.data.payload.text)-1);
 
     return set_report(handle, message.raw_buffer, sizeof(message.raw_buffer));
 }
@@ -291,7 +292,7 @@ int send_host_msg(coreliquid_device *handle, const char *text)
 */
 void set_sync_mode(coreliquid_device *handle, int mode)
 {
-    char msg_text[55];
+    char msg_text[32];
     sprintf(msg_text, "55AASETSYNCMODE%02d5AA5", mode);
     send_host_msg(handle, msg_text);
 }
@@ -333,7 +334,7 @@ void set_display_mode(coreliquid_device *handle, display_features_t features, mo
     message = (struct hw_monitor_message) {
         .data = {
             .header = {
-                .report_id = REPORT_ID_S360,
+                .report_id = REPORT_ID_S,
                 .magic_two = MAGIC_CODE_MCU,
                 .command_code = SET_DISPLAY_MODE,
                 .length = sizeof(message.data.payload),
