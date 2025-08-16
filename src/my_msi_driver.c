@@ -1,6 +1,3 @@
-// Compilation:
-// gcc my_msi_driver.c -lhidapi-hidraw -lsensors -o /where/you/want/my_msi_driver
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -11,8 +8,9 @@
 #include "coreliquid.h"
 #include "sensors_wrap.h"
 
-// Flag to stop the daemon
-int stop = 0;
+// Flags to stop and suspend the daemon
+volatile int stop = 0;
+volatile int suspend = 0;
 
 /**
  * Monitor the CPU temperature and send it to the AIO.
@@ -25,6 +23,12 @@ void monitor_cpu_temperature(coreliquid_device* handle_s, coreliquid_device* han
 
     // Listen to temperature in an infinite loop
     while (!stop) {
+        if (suspend) {
+            loginfo("Suspended, waiting ...\n");
+            pause();
+            loginfo("Waked up ...\n");
+        }
+
         fetch_sensors_data(&data);
 
         if (data.cpu_temp > 0 && data.cpu_freq > 0) {
@@ -36,7 +40,6 @@ void monitor_cpu_temperature(coreliquid_device* handle_s, coreliquid_device* han
         // Wait 2s
         usleep(2000*1000);
     }
-
 }
 
 /**
@@ -49,49 +52,95 @@ void stopit(__attribute__((unused)) int sig)
 }
 
 /**
+ * Signal handler to suspend the daemon.
+ * Can take up to 2s to suspend (sleeping time between temperature reads).
+ */
+void suspendit(__attribute__((unused)) int sig)
+{
+    suspend = 1;
+}
+
+/**
+ * Signal handler to resume the daemon.
+ */
+void resumeit(__attribute__((unused)) int sig)
+{
+    suspend = 0;
+}
+
+/**
  * Main program
  */
 int main(int argc, char *argv[])
 {
     int fan_mode = FAN_MODE_SMART;
     int start_daemon = 0;
+    int exit_status = EXIT_SUCCESS;
+    int opt;
 
-    // Check options
-    for (int i = 1; i < argc; i++) {
-        if (!strcmp(argv[i], "-M")) {
-            fan_mode = atoi(argv[++i]);
-            if ((fan_mode < 0) || (fan_mode > 5) || (fan_mode == 3)) {
-                printf("Allowed modes:\n");
-                printf("0 : silent\n");
-                printf("1 : balance\n"),
-                printf("2 : game\n");
-                printf("4 : default (constant)\n");
-                printf("5 : smart\n");
-                exit(0);
-            }
+     while ((opt = getopt(argc, argv, "M:")) != -1) {
+        switch (opt) {
+            case 'M':
+                fan_mode = atoi(optarg);
+                if ((fan_mode < 0) || (fan_mode > 5) || (fan_mode == 3)) {
+                    printf("Allowed modes:\n");
+                    printf("0 : silent\n");
+                    printf("1 : balance\n"),
+                    printf("2 : game\n");
+                    printf("4 : default (constant)\n");
+                    printf("5 : smart\n");
+
+                    exit(0);
+                }
+                break;
+
+            case '?': // Unrecognized option
+                fprintf(stderr, "Unknown option: %c\n", optopt);
+                break;
+
+            case ':': // Missing argument for an option
+                fprintf(stderr, "Option -%c requires an argument.\n", optopt);
+                break;
         }
-        else if (!strcmp(argv[i], "startd"))
-            start_daemon = 1;
     }
+
+    if (!strcmp(argv[optind], "startd"))
+            start_daemon = 1;
 
     // Initialize the subsystems
     init_coreliquid(start_daemon);
     init_sensors();
 
-    coreliquid_device* handle_cl = open_fan_device();
+    coreliquid_device* handle_cl = open_device_aio();
     if (!handle_cl) {
         shutdown_coreliquid();
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     coreliquid_device* handle_s = open_s_device();
     if (!handle_s) {
         close_coreliquid_device(handle_cl);
         shutdown_coreliquid();
-        exit(1);
+        exit(EXIT_FAILURE);
     }
 
     detect_sensors();
+
+    int model_idx;
+    if (!get_model_index(handle_cl, &model_idx)) {
+        exit_status = EXIT_FAILURE;
+        goto exit_free;
+    }
+
+    loginfo("LED device model index: %d\n", model_idx);
+
+    int version_high, version_low;
+    if (!get_fw_version_ldprom(handle_cl, &version_high, &version_low)) {
+        exit_status = EXIT_FAILURE;
+        goto exit_free;
+    }
+
+    loginfo("LED device firmware version: %d.%d\n", version_high, version_low);
 
     set_fan_mode(handle_cl, fan_mode);
     set_lcm_back_light(handle_s, LCM_DEFAULT_BRIGHTNESS);
@@ -103,15 +152,18 @@ int main(int argc, char *argv[])
     if (start_daemon) {
         signal(SIGTERM, stopit);
         signal(SIGINT, stopit);
+        signal(SIGTSTP, suspendit);
+        signal(SIGCONT, resumeit);
 
         monitor_cpu_temperature(handle_s, handle_cl);
     }
 
+exit_free:
     close_coreliquid_device(handle_s);
     close_coreliquid_device(handle_cl);
 
     shutdown_sensors();
     shutdown_coreliquid();
 
-    exit(0);
+    exit(exit_status);
 }

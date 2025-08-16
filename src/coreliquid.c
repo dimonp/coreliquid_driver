@@ -4,14 +4,19 @@
 
 #include "coreliquid.h"
 
-#define HID_REPORT_SIZE 65
-#define REPORT_ID_CORELIQUID 0xD0
-#define REPORT_ID_LED 0xFA
+#define HID_REPORT_SIZE 64
+#define REPORT_ID_LED 0x01
+#define REPORT_ID_COMMON 0xD0
+#define REPORT_ID_LEDPE0 0xFA
+#define CHECK_FILL_VALUE 0xCC
 
 static const uint16_t supported_vids[] = { 0x0db0 };
 static const uint16_t supported_pids[] = { 0x6a04, 0x6a05 };
 
-enum command_code_common {
+// command codes for reports with id = 0x01
+enum command_code_mcu {
+    GET_RESPONSE_COMMAND    = 0x5A,
+
     GET_FW_VERSION_APROM    = 0xB0,
     GET_CURRENT_MODEL_INDEX = 0xB1,
     GET_FWCHECKSUM_APROM    = 0xB4,
@@ -23,15 +28,13 @@ enum command_code_common {
     SET_VOLUME              = 0xC0,
     SET_RESET_MCU           = 0xD0,
 };
-typedef enum command_code_common command_code_common_t;
 
-// command codes for messages of type = 0xFA
-enum command_code_led {
+// command codes for reports with id = 0xFA
+enum command_code_ledpe0 {
     GET_LED_PE0 = 0xA0,
 };
-typedef enum command_code_led command_code_led_t;
 
-// command codes for messages of type = 0xD0
+// command codes for reports with id = 0xD0
 enum command_code_ext {
     GET_COOLER_STATUS               = 0x31,
 
@@ -61,7 +64,6 @@ enum command_code_ext {
     GET_OLED_FW_VERSION             = 0xF0,
     SET_OLED_START_IS_PPROCESS      = 0xFA,
 };
-typedef enum command_code_ext command_code_ext_t;
 
 #pragma pack(1)
 
@@ -77,8 +79,19 @@ struct message_request {
     };
 };
 
+struct aprom_model_response {
+    struct message_header header;
+    uint8_t value;
+};
+struct message_aprom_model_response {
+    union {
+        struct aprom_model_response report;
+        unsigned char raw_buffer[HID_REPORT_SIZE];
+    };
+};
+
 // GET_COOLER_STATUS
-struct fan_status {
+struct fan_status_response {
     struct message_header header;
     uint16_t fan_speed_1; // Raditor fan
     uint16_t fan_speed_2;
@@ -95,15 +108,16 @@ struct fan_status {
     uint16_t fan_duty_4;
     uint16_t fan_duty_5;
 };
-struct message_fan_status {
+struct message_fan_status_response {
     union {
-        struct fan_status report;
+        struct fan_status_response report;
         unsigned char raw_buffer[HID_REPORT_SIZE];
     };
 };
 
-// SET_FAN_DUTY_MODE
 #define CONFIG_COUNT_FAN 7
+
+// SET_FAN_DUTY_MODE
 struct config_fan_duty {
     struct message_header header;
     uint8_t fan_mode_1;
@@ -183,31 +197,31 @@ const uint8_t fan_duty_preset_5[CONFIG_COUNT_FAN] = {20, 40, 50, 100, 100, 100, 
 /**
 * Retrieves the status of the Coreliquid cooler device.
 *
-* @param cl_handle Pointer to the CoreLiquid device handle.
+* @param handle Pointer to the CoreLiquid device handle.
 * @param temperature_in Pointer to store the input temperature value (in degrees Celsius).
 * @param temperature_out Pointer to store the output temperature value (in degrees Celsius).
 * @param fan_speed Pointer to store the fan speed value (in RPM).
 * @return 1 if the cooler status was successfully retrieved, 0 otherwise.
 */
-int get_cooler_status(coreliquid_device* cl_handle, int* temperature_in, int* temperature_out, int* fan_speed)
+int get_cooler_status(coreliquid_device* handle, int* temperature_in, int* temperature_out, int* fan_speed)
 {
-    struct message_fan_status message_input;
+    struct message_fan_status_response message_input;
     struct message_request message;
     memset(&message.raw_buffer, 0, sizeof(message.raw_buffer));
 
     message.header = (struct message_header) {
-        .report_id = REPORT_ID_CORELIQUID,
+        .report_id = REPORT_ID_COMMON,
         .command = GET_COOLER_STATUS,
     };
 
-    if (!write_output(cl_handle, message.raw_buffer, sizeof(message.raw_buffer))) {
+    if (!write_output(handle, message.raw_buffer, sizeof(message.raw_buffer))) {
         return 0;
     }
 
     usleep(10000);
 
-    if (read_input(cl_handle, message_input.raw_buffer, sizeof(message_input.raw_buffer))
-            && message_input.report.header.report_id == GET_COOLER_STATUS) {
+    if (read_input(handle, message_input.raw_buffer, sizeof(message_input.raw_buffer))
+            && message_input.report.header.command == GET_COOLER_STATUS) {
 
         *temperature_in = message_input.report.temperature_in;
         *temperature_out = message_input.report.temperature_out;
@@ -222,11 +236,11 @@ int get_cooler_status(coreliquid_device* cl_handle, int* temperature_in, int* te
 /**
  * Sets the CPU status (temperature and frequency) to be displayed on the OLED screen.
  *
- * @param cl_handle Pointer to the CoreLiquid device handle.
+ * @param handle Pointer to the CoreLiquid device handle.
  * @param temperature The CPU temperature to display.
  * @param frequency The CPU frequency to display.
  */
-void set_oled_cpu_status(coreliquid_device* cl_handle, int temperature, int frequency)
+void set_oled_cpu_status(coreliquid_device* handle, int temperature, int frequency)
 {
     struct message_oled_cpu message;
     memset(&message.raw_buffer, 0, sizeof(message.raw_buffer));
@@ -234,7 +248,7 @@ void set_oled_cpu_status(coreliquid_device* cl_handle, int temperature, int freq
     message = (struct message_oled_cpu) {
         .config = {
             .header = {
-                .report_id = REPORT_ID_CORELIQUID,
+                .report_id = REPORT_ID_COMMON,
                 .command = SET_OLED_CPU_STATUS,
             },
             .cpu_freq = frequency,
@@ -242,7 +256,7 @@ void set_oled_cpu_status(coreliquid_device* cl_handle, int temperature, int freq
         }
     };
 
-    write_output(cl_handle, message.raw_buffer, sizeof(message.raw_buffer));
+    write_output(handle, message.raw_buffer, sizeof(message.raw_buffer));
 }
 
 
@@ -250,11 +264,11 @@ void set_oled_cpu_status(coreliquid_device* cl_handle, int temperature, int freq
 /**
  * Sets the fan duty mode for a Coreliquid device.
  *
- * @param cl_handle Pointer to the CoreLiquid device handle.
+ * @param handle Pointer to the CoreLiquid device handle.
  * @param fan_mode The fan mode to set for all fans. If set to FAN_MODE_CUSTOM,
  *                 predefined duty cycles will be applied to the fans.
  */
-void set_fan_duty_mode(coreliquid_device* cl_handle, uint8_t fan_mode)
+void set_fan_duty_mode(coreliquid_device* handle, uint8_t fan_mode)
 {
     struct message_fan_duty message;
     memset(&message.raw_buffer, 0, sizeof(message.raw_buffer));
@@ -262,7 +276,7 @@ void set_fan_duty_mode(coreliquid_device* cl_handle, uint8_t fan_mode)
     message = (struct message_fan_duty) {
         .config = {
             .header = {
-                .report_id = REPORT_ID_CORELIQUID,
+                .report_id = REPORT_ID_COMMON,
                 .command = SET_FAN_DUTY_MODE,
             },
             .fan_mode_1 = fan_mode,
@@ -281,17 +295,17 @@ void set_fan_duty_mode(coreliquid_device* cl_handle, uint8_t fan_mode)
         memcpy(message.config.duty_cycle_4, fan_duty_preset_5, sizeof(fan_duty_preset_5));
     }
 
-    write_output(cl_handle, message.raw_buffer, sizeof(message.raw_buffer));
+    write_output(handle, message.raw_buffer, sizeof(message.raw_buffer));
 }
 
 /**
 * Sets the temperature mode for all fans on a CoreLiquid device.
 *
-* @param cl_handle Pointer to the CoreLiquid device handle.
+* @param handle Pointer to the CoreLiquid device handle.
 * @param fan_mode The temperature mode to set for all fans. If set to FAN_MODE_CUSTOM,
 *                 custom temperature presets will be applied to each fan.
 */
-void set_fan_temperature_mode(coreliquid_device* cl_handle, uint8_t fan_mode)
+void set_fan_temperature_mode(coreliquid_device* handle, uint8_t fan_mode)
 {
     struct message_fan_temperature message;
     memset(&message.raw_buffer, 0, sizeof(message.raw_buffer));
@@ -299,7 +313,7 @@ void set_fan_temperature_mode(coreliquid_device* cl_handle, uint8_t fan_mode)
     message = (struct message_fan_temperature ) {
         .config = {
             .header = {
-                .report_id = REPORT_ID_CORELIQUID,
+                .report_id = REPORT_ID_COMMON,
                 .command = SET_FAN_TEMPERATURE_MODE,
             },
             .fan_mode_1 = fan_mode,
@@ -318,30 +332,30 @@ void set_fan_temperature_mode(coreliquid_device* cl_handle, uint8_t fan_mode)
         memcpy(message.config.fan_temp_5, fan_temp_preset_5, sizeof(fan_temp_preset_5));
     }
 
-    write_output(cl_handle, message.raw_buffer, sizeof(message.raw_buffer));
+    write_output(handle, message.raw_buffer, sizeof(message.raw_buffer));
 }
 
 /**
  * Sets the fan mode for a CoreLiquid device.
  *
- * @param cl_handle Pointer to the CoreLiquid device handle.
+ * @param handle Pointer to the CoreLiquid device handle.
  * @param fan_mode The desired fan mode to set.
  */
-void set_fan_mode(coreliquid_device* cl_handle, fan_mode_t fan_mode)
+void set_fan_mode(coreliquid_device* handle, fan_mode_t fan_mode)
 {
-    set_fan_duty_mode(cl_handle, fan_mode);
+    set_fan_duty_mode(handle, fan_mode);
     usleep(10000);
-    set_fan_temperature_mode(cl_handle, fan_mode);
+    set_fan_temperature_mode(handle, fan_mode);
     usleep(10000);
 }
 
 /**
  * Sets the clock display style on the OLED screen.
  *
- * @param cl_handle Pointer to the coreliquid device handle.
+ * @param handle Pointer to the coreliquid device handle.
  * @param style The style of the clock to display.
  */
-void set_oled_show_clock(coreliquid_device* cl_handle, uint8_t style)
+void set_oled_show_clock(coreliquid_device* handle, uint8_t style)
 {
     struct message_oled_show_clock message;
     memset(&message.raw_buffer, 0, sizeof(message.raw_buffer));
@@ -349,14 +363,93 @@ void set_oled_show_clock(coreliquid_device* cl_handle, uint8_t style)
     message = (struct message_oled_show_clock) {
         .config = {
             .header = {
-                .report_id = REPORT_ID_CORELIQUID,
+                .report_id = REPORT_ID_COMMON,
                 .command = SET_OLED_SHOW_CLOCK,
             },
             .style = style,
         }
     };
 
-    write_output(cl_handle, message.raw_buffer, sizeof(message.raw_buffer));
+    write_output(handle, message.raw_buffer, sizeof(message.raw_buffer));
+}
+
+/**
+* Retrieves the model index from a coreliquid device.
+*
+* @param handle Pointer to the coreliquid device handle.
+* @param model_idx Pointer to store the retrieved model index.
+* @return 1 if the model index was successfully retrieved, 0 otherwise.
+*/
+int get_model_index(coreliquid_device* handle, int* model_idx)
+{
+    struct message_aprom_model_response message_input;
+    struct message_request message;
+    memset(&message.raw_buffer, CHECK_FILL_VALUE, sizeof(message.raw_buffer));
+
+    message.header = (struct message_header) {
+        .report_id = REPORT_ID_LED,
+        .command = GET_CURRENT_MODEL_INDEX,
+    };
+
+    if (!write_output(handle, message.raw_buffer, sizeof(message.raw_buffer))) {
+        return 0;
+    }
+
+    usleep(10000);
+
+    if (read_input(handle, message_input.raw_buffer, sizeof(message_input.raw_buffer))
+            && message_input.report.header.command == GET_RESPONSE_COMMAND
+            && message_input.report.value != CHECK_FILL_VALUE) {
+
+        for (size_t i = 3; i < sizeof(message_input.raw_buffer); ++i) {
+            if (message_input.raw_buffer[i] != CHECK_FILL_VALUE) {
+                return 0;
+            }
+        }
+
+        *model_idx = message_input.report.value;
+
+        return 1;
+    }
+
+    return 0;
+}
+
+/**
+* Retrieves the firmware version from of a CoreLiquid LED device.
+*
+* @param handle Pointer to the CoreLiquid device handle.
+* @param version_major Pointer to store the major version number.
+* @param version_minor Pointer to store the minor version number.
+* @return 1 if the version was successfully retrieved, 0 otherwise.
+*/
+int get_fw_version_ldprom(coreliquid_device* handle, int* version_major, int* version_minor)
+{
+    struct message_aprom_model_response message_input;
+    struct message_request message;
+    memset(&message.raw_buffer, 0xcc, sizeof(message.raw_buffer));
+
+    message.header = (struct message_header) {
+        .report_id = REPORT_ID_LED,
+        .command = GET_FW_VERSION_APROM,
+    };
+
+    if (!write_output(handle, message.raw_buffer, sizeof(message.raw_buffer))) {
+        return 0;
+    }
+
+    usleep(10000);
+
+    if (read_input(handle, message_input.raw_buffer, sizeof(message_input.raw_buffer))
+            && message_input.report.header.command == GET_RESPONSE_COMMAND) {
+
+        *version_major = message_input.report.value >> 4;
+        *version_minor = message_input.report.value & 0xf;
+
+        return 1;
+    }
+
+    return 0;
 }
 
 /**
@@ -364,13 +457,13 @@ void set_oled_show_clock(coreliquid_device* cl_handle, uint8_t style)
 *
 * @return Pointer to the opened coreliquid_device handle if successful, 0 otherwise.
 */
-coreliquid_device* open_fan_device(void)
+coreliquid_device* open_device_aio(void)
 {
-    coreliquid_device* cl_handle = NULL;
-    cl_handle = search_and_open_device(supported_vids, ARRAY_SIZE(supported_vids), supported_pids, ARRAY_SIZE(supported_pids));
-    if (!cl_handle) {
-        loginfo("Failed to open Coreliquid device.\n");
+    coreliquid_device* handle = NULL;
+    handle = search_and_open_device(supported_vids, ARRAY_SIZE(supported_vids), supported_pids, ARRAY_SIZE(supported_pids));
+    if (!handle) {
+        loginfo("Failed to open Coreliquid AIO device.\n");
     }
 
-    return cl_handle;
+    return handle;
 }

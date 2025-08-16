@@ -1,3 +1,4 @@
+#include <stdlib.h>
 #include "string.h"
 #include <sensors/sensors.h>
 
@@ -116,7 +117,7 @@ void detect_sensors(void)
 
 #ifdef _DEBUG
         		const char *adap = sensors_get_adapter_name(&chip->bus);
-                printf("Chip: %s: %s\n", chip->prefix, adap);
+                loginfo("Chip: %s: %s\n", chip->prefix, adap);
 #endif
 
         // Iterate through features of the current chip
@@ -125,14 +126,15 @@ void detect_sensors(void)
             int subfeature_nr = 0;
 
 #ifdef _DEBUG
-                const char *label = sensors_get_label(chip, feature);
-                printf("\tFeature: %s (%d)\n", label, feature->type);
+                char *label = sensors_get_label(chip, feature);
+                loginfo("\tFeature: %s (%d)\n", label, feature->type);
+                free(label);
 #endif
 
             // Iterate through subfeatures of the current feature
             while ((subfeature = sensors_get_all_subfeatures(chip, feature, &subfeature_nr)) != NULL) {
 #ifdef _DEBUG
-                printf("\t\tSubfeature: %s (%d)\n", subfeature->name, subfeature->type);
+                loginfo("\t\tSubfeature: %s (%d)\n", subfeature->name, subfeature->type);
 #endif
 
                 detect_cpu_temp_sensor(chip, feature, subfeature);
