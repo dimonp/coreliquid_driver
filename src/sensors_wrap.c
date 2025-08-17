@@ -194,12 +194,15 @@ int get_cpu_usage(void)
     return result;
 }
 
+
 /**
- * Fetches various sensor data and populates the provided data structure.
+ * Fetches the current sensor values and stores them in the provided data structure.
  *
- * @param data Pointer to the sensors_data_t structure.
+ * @param data Pointer to a sensors_values_t structure where the sensor data will be stored.
+ *
+ * Each sensor value is only retrieved and stored if the corresponding sensor name in sensors_bank is not NULL.
  */
-void fetch_sensors_data(sensors_data_t *data)
+void fetch_sensor_values(sensors_values_t *data)
 {
     int ret;
     double value;

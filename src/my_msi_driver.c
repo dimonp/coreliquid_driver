@@ -19,7 +19,7 @@ volatile int suspend = 0;
  */
 void monitor_cpu_temperature(coreliquid_device* handle_s, coreliquid_device* handle_cl)
 {
-    sensors_data_t data;
+    sensors_values_t data;
 
     // Listen to temperature in an infinite loop
     while (!stop) {
@@ -29,7 +29,7 @@ void monitor_cpu_temperature(coreliquid_device* handle_s, coreliquid_device* han
             loginfo("Waked up ...\n");
         }
 
-        fetch_sensors_data(&data);
+        fetch_sensor_values(&data);
 
         if (data.cpu_temp > 0 && data.cpu_freq > 0) {
             set_oled_cpu_status(handle_cl, data.cpu_temp, data.cpu_freq);
