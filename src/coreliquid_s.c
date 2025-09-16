@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <unistd.h>
 
 #include "coreliquid_hid.h"
 #include "coreliquid_s.h"
@@ -57,15 +58,50 @@ enum command_code_s360 {
 #pragma pack(1)
 
 struct message_header_s {
-    uint8_t  report_id;
-    uint16_t magic_two; // always = MAGIC_CODE_S (0x5a6b)
+    uint16_t magic_two; // = MAGIC_CODE_S (0x5a6b)
     uint16_t command_code;
     uint32_t length;
 };
 
+struct report_header_s {
+    uint8_t  report_id;
+    struct message_header_s message;
+};
+
+struct message_request {
+    struct report_header_s header;
+    struct {
+        uint32_t parameter;
+    } payload;
+};
+struct message_request_message {
+    union {
+        struct message_request data;
+        unsigned char raw_buffer[HID_REPORT_SIZE];
+    };
+};
+
+// GET_DEV_INFO_R
+struct dev_info_response {
+    struct message_header_s header;
+    uint32_t fw_version;
+    uint32_t back_light;
+    uint32_t lcm_direction;
+    uint32_t status_code;
+    uint32_t sync_mode;
+};
+struct dev_info_response_message {
+    union {
+        struct report_header_s header_send;
+        struct dev_info_response data;
+        unsigned char raw_buffer[HID_REPORT_SIZE];
+    };
+};
+
+
 // SEND_HOST_CPU_INFO
 struct hw_info {
-    struct message_header_s header;
+    struct report_header_s header;
     struct {
         uint16_t cpu_freq;
         uint16_t cpu_temp;
@@ -112,7 +148,7 @@ struct is_show_info {
     uint8_t reserved;
 };
 struct hw_monitor {
-    struct message_header_s header;
+    struct report_header_s header;
     struct {
         uint8_t mode;
         uint8_t slide_show;
@@ -129,7 +165,7 @@ struct hw_monitor_message {
 
 // SET_LCM_BACKLIGHT
 struct back_light {
-    struct message_header_s header;
+    struct report_header_s header;
     struct {
         uint32_t brightness;
     } payload;
@@ -143,7 +179,7 @@ struct back_light_message {
 
 // SET_LCM_DIR
 struct lcm_direction {
-    struct message_header_s header;
+    struct report_header_s header;
     struct {
         uint32_t direction;
     } payload;
@@ -157,7 +193,7 @@ struct lcm_direction_message {
 
 // SEND_HOST_MSG
 struct host_text {
-    struct message_header_s header;
+    struct report_header_s header;
     struct {
         char text[55];
     } payload;
@@ -170,6 +206,34 @@ struct host_text_message {
 };
 
 #pragma pack()
+
+/**
+ * Sends a reset command to the LCM MCU.
+ *
+ * @param handle Pointer to the coreliquid_device structure representing the device.
+ */
+void set_reset_lcm_mcu(coreliquid_device* handle)
+{
+    struct message_request_message message;
+    memset(&message.raw_buffer, 0, sizeof(message.raw_buffer));
+
+    message = (struct message_request_message) {
+        .data = {
+            .header = {
+                .report_id = REPORT_ID_S,
+                .message.magic_two = MAGIC_CODE_MCU,
+                .message.command_code = SET_LCM_RESET,
+                .message.length = sizeof(message.data.payload),
+            },
+            .payload = {
+                .parameter = 0xFFFFFFFF
+            }
+        }
+    };
+
+    set_report(handle, message.raw_buffer, sizeof(message.raw_buffer));
+}
+
 
 /**
 * Sends CPU temperature and frequency information to the device.
@@ -188,9 +252,9 @@ void send_cpu_info(coreliquid_device *handle, int temperature, int frequency)
         .data = {
             .header = {
                 .report_id = REPORT_ID_S,
-                .magic_two = MAGIC_CODE_MCU,
-                .command_code = SEND_HOST_CPU_INFO,
-                .length = sizeof(message.data.payload),
+                .message.magic_two = MAGIC_CODE_MCU,
+                .message.command_code = SEND_HOST_CPU_INFO,
+                .message.length = sizeof(message.data.payload),
             },
             .payload = {
                 .cpu_temp = temperature,
@@ -217,9 +281,9 @@ void set_lcm_back_light(coreliquid_device *handle, int brightness)
         .data = {
             .header = {
                 .report_id = REPORT_ID_S,
-                .magic_two = MAGIC_CODE_MCU,
-                .command_code = SET_LCM_BACKLIGHT,
-                .length = sizeof(message.data.payload),
+                .message.magic_two = MAGIC_CODE_MCU,
+                .message.command_code = SET_LCM_BACKLIGHT,
+                .message.length = sizeof(message.data.payload),
             },
             .payload = {
                 .brightness = brightness,
@@ -245,9 +309,9 @@ void set_lcm_direction(coreliquid_device *handle, lcm_dir_t direction)
         .data = {
             .header = {
                 .report_id = REPORT_ID_S,
-                .magic_two = MAGIC_CODE_MCU,
-                .command_code = SET_LCM_DIR,
-                .length = sizeof(message.data.payload),
+                .message.magic_two = MAGIC_CODE_MCU,
+                .message.command_code = SET_LCM_DIR,
+                .message.length = sizeof(message.data.payload),
             },
             .payload = {
                 .direction = direction,
@@ -264,7 +328,7 @@ void set_lcm_direction(coreliquid_device *handle, lcm_dir_t direction)
  * @param handle Pointer to the coreliquid device handle.
  * @param text The text to be sent to the device.
  */
-int send_host_msg(coreliquid_device *handle, const char *text)
+void send_host_msg(coreliquid_device *handle, const char *text)
 {
     struct host_text_message message;
     memset(&message.raw_buffer, 0, sizeof(message.raw_buffer));
@@ -273,15 +337,15 @@ int send_host_msg(coreliquid_device *handle, const char *text)
         .data = {
             .header = {
                 .report_id = REPORT_ID_S,
-                .magic_two = MAGIC_CODE_MCU,
-                .command_code = SEND_HOST_MSG,
-                .length = sizeof(message.data.payload),
+                .message.magic_two = MAGIC_CODE_MCU,
+                .message.command_code = SEND_HOST_MSG,
+                .message.length = sizeof(message.data.payload),
             },
         }
     };
     strncpy(message.data.payload.text, text, sizeof(message.data.payload.text)-1);
 
-    return set_report(handle, message.raw_buffer, sizeof(message.raw_buffer));
+    set_report(handle, message.raw_buffer, sizeof(message.raw_buffer));
 }
 
 /**
@@ -335,9 +399,9 @@ void set_display_mode(coreliquid_device *handle, display_features_t features, mo
         .data = {
             .header = {
                 .report_id = REPORT_ID_S,
-                .magic_two = MAGIC_CODE_MCU,
-                .command_code = SET_DISPLAY_MODE,
-                .length = sizeof(message.data.payload),
+                .message.magic_two = MAGIC_CODE_MCU,
+                .message.command_code = SET_DISPLAY_MODE,
+                .message.length = sizeof(message.data.payload),
             },
             .payload = {
                 .mode = DISPLAY_MODE_HW_MONITOR,
@@ -351,6 +415,46 @@ void set_display_mode(coreliquid_device *handle, display_features_t features, mo
     set_report(handle, message.raw_buffer, sizeof(message.raw_buffer));
 }
 
+int get_device_info(coreliquid_device *handle, int *fw_ver)
+{
+    struct dev_info_response_message message_input;
+    struct message_request_message message;
+    memset(&message.raw_buffer, 0, sizeof(message.raw_buffer));
+
+    message = (struct message_request_message) {
+        .data = {
+            .header = {
+                .report_id = REPORT_ID_S,
+                .message.magic_two = MAGIC_CODE_MCU,
+                .message.command_code = GET_DEV_INFO,
+                .message.length = sizeof(message.data.payload),
+            },
+            .payload = {
+                .parameter = 0x0
+            }
+        }
+    };
+
+    if (!set_report(handle, message.raw_buffer, sizeof(message.raw_buffer))) {
+        return 0;
+    }
+
+    usleep(10000);
+
+    memset(&message_input.raw_buffer, 0, sizeof(message_input.raw_buffer));
+    message_input.header_send.report_id = REPORT_ID_S;
+
+    if (get_report(handle, message_input.raw_buffer, sizeof(message_input.raw_buffer))
+            && message_input.data.header.magic_two == MAGIC_CODE_MCU
+            && message_input.data.header.command_code == GET_DEV_INFO_R) {
+
+        *fw_ver = message_input.data.fw_version;
+
+        return 1;
+    }
+
+    return 0;
+}
 
 /**
 * Opens a Coreliquid S* device by searching for supported VID/PID combinations.
@@ -359,11 +463,5 @@ void set_display_mode(coreliquid_device *handle, display_features_t features, mo
 */
 coreliquid_device* open_s_device(void)
 {
-    coreliquid_device* handle = NULL;
-    handle = search_and_open_device(supported_vids, ARRAY_SIZE(supported_vids), supported_pids, ARRAY_SIZE(supported_pids));
-    if (!handle) {
-        logerror("Failed to open Coreliquid S device.\n");
-    }
-
-    return handle;
+    return search_and_open_device(supported_vids, ARRAY_SIZE(supported_vids), supported_pids, ARRAY_SIZE(supported_pids));
 }

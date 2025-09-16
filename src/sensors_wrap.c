@@ -17,72 +17,94 @@ static struct {
 
 } sensors_bank;
 
+typedef struct {
+    const char *chip_prefix;
+    sensors_feature_type feature_type;
+    const char *feature_name;
+    sensors_subfeature_type subfeature_type;
+    const sensors_chip_name **chip_name;
+    int *subfeature_index;
+} sensor_config_t;
 
-int detect_cpu_temp_sensor(
-    const sensors_chip_name *chip,
-    const sensors_feature *feature,
-    const sensors_subfeature *subfeature)
-{
-    if (strcmp(chip->prefix, "coretemp") && strcmp(chip->prefix, "k10temp"))
-        return 0;
+static const sensor_config_t sensor_configs[] = {
+    {
+        .chip_prefix = "coretemp|k10temp",
+        .feature_type = SENSORS_FEATURE_TEMP,
+        .feature_name = "temp1|Tctl",
+        .subfeature_type = SENSORS_SUBFEATURE_TEMP_INPUT,
+        .chip_name = &sensors_bank.name_cpu_temp,
+        .subfeature_index = &sensors_bank.idx_cpu_temp
+    },
+    {
+        .chip_prefix = "amdgpu",
+        .feature_type = SENSORS_FEATURE_TEMP,
+        .feature_name = "temp2",
+        .subfeature_type = SENSORS_SUBFEATURE_TEMP_INPUT,
+        .chip_name = &sensors_bank.name_gpu_temp,
+        .subfeature_index = &sensors_bank.idx_gpu_temp
+    },
+    {
+        .chip_prefix = "amdgpu",
+        .feature_type = SENSORS_FEATURE_FREQ,
+        .feature_name = "freq1",
+        .subfeature_type = SENSORS_SUBFEATURE_FREQ_INPUT,
+        .chip_name = &sensors_bank.name_gpu_freq,
+        .subfeature_index = &sensors_bank.idx_gpu_freq
+    }
+};
 
-    if (feature->type != SENSORS_FEATURE_TEMP)
-        return 0;
+/**
+* Checks if a string matches any of the patterns separated by '|'.
+*
+* @param str The string to be matched against the patterns.
+* @param pattern A string containing patterns separated by '|'.
+* @return 1 if the string matches any of the patterns, 0 otherwise.
+*/
+int pattern_match(const char *str, const char *pattern) {
+    char *pattern_copy = strdup(pattern);
+    char *token = strtok(pattern_copy, "|");
 
-    if (strcmp(feature->name, "temp1") && strcmp(feature->name, "Tctl"))
-        return 0;
+    while (token != NULL) {
+        if (strcmp(str, token) == 0) {
+            free(pattern_copy);
+            return 1;
+        }
+        token = strtok(NULL, "|");
+    }
 
-    if (subfeature->type != SENSORS_SUBFEATURE_TEMP_INPUT)
-        return 0;
-
-    sensors_bank.name_cpu_temp = chip;
-    sensors_bank.idx_cpu_temp = subfeature->number;
-
-    return 1;
+    free(pattern_copy);
+    return 0;
 }
 
-int detect_gpu_temp_sensor(
+/**
+ * Detects if a sensor matches the specified configuration.
+ *
+ * @param chip The sensor chip to check.
+ * @param feature The sensor feature to check.
+ * @param subfeature The sensor subfeature to check.
+ * @param config The sensor configuration to match against.
+ * @return 1 if the sensor matches the configuration, 0 otherwise.
+ */
+int detect_sensor(
     const sensors_chip_name *chip,
     const sensors_feature *feature,
-    const sensors_subfeature *subfeature)
+    const sensors_subfeature *subfeature,
+    const sensor_config_t *config)
 {
-    if (strcmp(chip->prefix, "amdgpu"))
+    if (!pattern_match(chip->prefix, config->chip_prefix))
         return 0;
 
-    if (feature->type != SENSORS_FEATURE_TEMP)
+    if (feature->type != config->feature_type)
         return 0;
 
-    if (strcmp(feature->name, "temp2"))
+    if (!pattern_match(feature->name, config->feature_name))
         return 0;
 
-    if (subfeature->type != SENSORS_SUBFEATURE_TEMP_INPUT)
+    if (subfeature->type != config->subfeature_type)
         return 0;
 
-    sensors_bank.name_gpu_temp = chip;
-    sensors_bank.idx_gpu_temp = subfeature->number;
-
-    return 1;
-}
-
-int detect_gpu_freq_sensor(
-    const sensors_chip_name *chip,
-    const sensors_feature *feature,
-    const sensors_subfeature *subfeature)
-{
-    if (strcmp(chip->prefix, "amdgpu"))
-        return 0;
-
-    if (feature->type != SENSORS_FEATURE_FREQ)
-        return 0;
-
-    if (strcmp(feature->name, "freq1"))
-        return 0;
-
-    if (subfeature->type != SENSORS_SUBFEATURE_FREQ_INPUT)
-        return 0;
-
-    sensors_bank.name_gpu_freq = chip;
-    sensors_bank.idx_gpu_freq = subfeature->number;
+    *(config->chip_name) = chip;
+    *(config->subfeature_index) = subfeature->number;
 
     return 1;
 }
@@ -105,7 +127,15 @@ void shutdown_sensors(void)
     memset(&sensors_bank, 0, sizeof(sensors_bank));
 }
 
-void detect_sensors(void)
+/**
+ * Detects and initializes LM sensors by iterating through all detected sensor chips,
+ * their features, and subfeatures. For each subfeature, it checks against all configured
+ * sensor configurations to identify and initialize matching sensors.
+ *
+ * This function uses the libsensors library to enumerate hardware monitoring chips
+ * and their associated features (e.g., temperature, voltage, fan sensors).
+ */
+void detect_lm_sensors(void)
 {
     const sensors_chip_name *chip;
     int chip_nr = 0;
@@ -137,9 +167,10 @@ void detect_sensors(void)
                 loginfo("\t\tSubfeature: %s (%d)\n", subfeature->name, subfeature->type);
 #endif
 
-                detect_cpu_temp_sensor(chip, feature, subfeature);
-                detect_gpu_temp_sensor(chip, feature, subfeature);
-                detect_gpu_freq_sensor(chip, feature, subfeature);
+                // Check against all configured sensors
+                for (size_t i = 0; i < ARRAY_SIZE(sensor_configs); i++) {
+                    detect_sensor(chip, feature, subfeature, &sensor_configs[i]);
+                }
             }
         }
     }
@@ -212,6 +243,7 @@ void fetch_sensor_values(sensors_values_t *data)
     }
 
     data->cpu_freq = get_cpu_frequency();
+    data->cpu_usage = get_cpu_usage();
 
     if (sensors_bank.name_cpu_temp != NULL) {
         ret = sensors_get_value(sensors_bank.name_cpu_temp, sensors_bank.idx_cpu_temp, &value);

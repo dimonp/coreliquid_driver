@@ -47,10 +47,11 @@ typedef enum display_features display_features_t;
 void send_cpu_info(coreliquid_device *cl_handle, int temperature, int frequency);
 void set_lcm_back_light(coreliquid_device *handle, int brightness);
 void set_lcm_direction(coreliquid_device *handle, lcm_dir_t direction);
-int send_host_msg(coreliquid_device *handle, const char *text);
+void send_host_msg(coreliquid_device *handle, const char *text);
 void set_display_mode(coreliquid_device *cl_handle, display_features_t features, monitor_style_t style);
 void set_sync_mode(coreliquid_device *handle, int mode);
 void set_temperature_unit(coreliquid_device *handle, int unit);
+int get_device_info(coreliquid_device *handle, int *fw_ver);
 
 coreliquid_device* open_s_device(void);
 

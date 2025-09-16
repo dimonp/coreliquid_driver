@@ -157,7 +157,6 @@ found:
 */
 int set_report(coreliquid_device* cl_handle, uint8_t* output_report, size_t length)
 {
-
     int ret = hid_send_feature_report(cl_handle->hid_device_handle, output_report, length);
     for (int i = 0; (i < 10) && ret < 0; ++i) {
         ret = hid_send_feature_report(cl_handle->hid_device_handle, output_report, length);
@@ -167,6 +166,27 @@ int set_report(coreliquid_device* cl_handle, uint8_t* output_report, size_t leng
     if (ret < 0) {
 #ifdef _DEBUG
         logerror("Unable to set report: %ls\n", hid_error(cl_handle->hid_device_handle));
+#endif
+        return 0;
+    }
+
+    return 1;
+}
+
+/**
+ * Retrieves a feature report from the HID device.
+ *
+ * @param cl_handle Pointer to the coreliquid device handle.
+ * @param input_report Pointer to the buffer where the input report will be stored.
+ * @param length The length of the input report buffer.
+ * @return 1 on success, 0 on failure.
+ */
+int get_report(coreliquid_device* cl_handle, uint8_t* input_report, size_t length)
+{
+    int ret = hid_get_feature_report(cl_handle->hid_device_handle, input_report, length);
+    if (ret < 0) {
+#ifdef _DEBUG
+        logerror("Unable to get report: %ls\n", hid_error(cl_handle->hid_device_handle));
 #endif
         return 0;
     }
