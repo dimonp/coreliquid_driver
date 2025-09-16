@@ -12,7 +12,7 @@ typedef struct sensors_values sensors_values_t;
 
 void init_sensors(void);
 void shutdown_sensors(void);
-void detect_sensors(void);
+void detect_lm_sensors(void);
 void fetch_sensor_values(sensors_values_t *data);
 
 

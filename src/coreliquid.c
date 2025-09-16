@@ -69,7 +69,7 @@ enum command_code_ext {
 
 struct message_header {
     uint8_t  report_id;
-    uint8_t  command;
+    uint8_t  command_code;
 };
 
 struct message_request {
@@ -195,6 +195,26 @@ const uint8_t fan_duty_preset_4[CONFIG_COUNT_FAN] = {60, 70, 100, 100, 100, 100,
 const uint8_t fan_duty_preset_5[CONFIG_COUNT_FAN] = {20, 40, 50, 100, 100, 100, 100};
 
 /**
+ * Sends a reset command to the MCU of the AIO device.
+ *
+ * @param handle A pointer to the coreliquid device handle.
+ */
+void set_reset_mcu(coreliquid_device* handle)
+{
+    struct message_request message;
+    memset(&message.raw_buffer, 0, sizeof(message.raw_buffer));
+
+    message = (struct message_request) {
+        .header = {
+            .report_id = REPORT_ID_COMMON,
+            .command_code = SET_RESET_MCU,
+        }
+    };
+
+    write_output(handle, message.raw_buffer, sizeof(message.raw_buffer));
+}
+
+/**
 * Retrieves the status of the Coreliquid cooler device.
 *
 * @param handle Pointer to the CoreLiquid device handle.
@@ -211,7 +231,7 @@ int get_cooler_status(coreliquid_device* handle, int* temperature_in, int* tempe
 
     message.header = (struct message_header) {
         .report_id = REPORT_ID_COMMON,
-        .command = GET_COOLER_STATUS,
+        .command_code = GET_COOLER_STATUS,
     };
 
     if (!write_output(handle, message.raw_buffer, sizeof(message.raw_buffer))) {
@@ -221,7 +241,7 @@ int get_cooler_status(coreliquid_device* handle, int* temperature_in, int* tempe
     usleep(10000);
 
     if (read_input(handle, message_input.raw_buffer, sizeof(message_input.raw_buffer))
-            && message_input.report.header.command == GET_COOLER_STATUS) {
+            && message_input.report.header.command_code == GET_COOLER_STATUS) {
 
         *temperature_in = message_input.report.temperature_in;
         *temperature_out = message_input.report.temperature_out;
@@ -249,7 +269,7 @@ void set_oled_cpu_status(coreliquid_device* handle, int temperature, int frequen
         .config = {
             .header = {
                 .report_id = REPORT_ID_COMMON,
-                .command = SET_OLED_CPU_STATUS,
+                .command_code = SET_OLED_CPU_STATUS,
             },
             .cpu_freq = frequency,
             .cpu_temp = temperature,
@@ -277,7 +297,7 @@ void set_fan_duty_mode(coreliquid_device* handle, uint8_t fan_mode)
         .config = {
             .header = {
                 .report_id = REPORT_ID_COMMON,
-                .command = SET_FAN_DUTY_MODE,
+                .command_code = SET_FAN_DUTY_MODE,
             },
             .fan_mode_1 = fan_mode,
             .fan_mode_2 = fan_mode,
@@ -314,7 +334,7 @@ void set_fan_temperature_mode(coreliquid_device* handle, uint8_t fan_mode)
         .config = {
             .header = {
                 .report_id = REPORT_ID_COMMON,
-                .command = SET_FAN_TEMPERATURE_MODE,
+                .command_code = SET_FAN_TEMPERATURE_MODE,
             },
             .fan_mode_1 = fan_mode,
             .fan_mode_2 = fan_mode,
@@ -364,7 +384,7 @@ void set_oled_show_clock(coreliquid_device* handle, uint8_t style)
         .config = {
             .header = {
                 .report_id = REPORT_ID_COMMON,
-                .command = SET_OLED_SHOW_CLOCK,
+                .command_code = SET_OLED_SHOW_CLOCK,
             },
             .style = style,
         }
@@ -388,7 +408,7 @@ int get_model_index(coreliquid_device* handle, int* model_idx)
 
     message.header = (struct message_header) {
         .report_id = REPORT_ID_LED,
-        .command = GET_CURRENT_MODEL_INDEX,
+        .command_code = GET_CURRENT_MODEL_INDEX,
     };
 
     if (!write_output(handle, message.raw_buffer, sizeof(message.raw_buffer))) {
@@ -398,7 +418,7 @@ int get_model_index(coreliquid_device* handle, int* model_idx)
     usleep(10000);
 
     if (read_input(handle, message_input.raw_buffer, sizeof(message_input.raw_buffer))
-            && message_input.report.header.command == GET_RESPONSE_COMMAND
+            && message_input.report.header.command_code == GET_RESPONSE_COMMAND
             && message_input.report.value != CHECK_FILL_VALUE) {
 
         for (size_t i = 3; i < sizeof(message_input.raw_buffer); ++i) {
@@ -431,7 +451,7 @@ int get_fw_version_ldprom(coreliquid_device* handle, int* version_major, int* ve
 
     message.header = (struct message_header) {
         .report_id = REPORT_ID_LED,
-        .command = GET_FW_VERSION_APROM,
+        .command_code = GET_FW_VERSION_APROM,
     };
 
     if (!write_output(handle, message.raw_buffer, sizeof(message.raw_buffer))) {
@@ -441,7 +461,7 @@ int get_fw_version_ldprom(coreliquid_device* handle, int* version_major, int* ve
     usleep(10000);
 
     if (read_input(handle, message_input.raw_buffer, sizeof(message_input.raw_buffer))
-            && message_input.report.header.command == GET_RESPONSE_COMMAND) {
+            && message_input.report.header.command_code == GET_RESPONSE_COMMAND) {
 
         *version_major = message_input.report.value >> 4;
         *version_minor = message_input.report.value & 0xf;
@@ -459,11 +479,5 @@ int get_fw_version_ldprom(coreliquid_device* handle, int* version_major, int* ve
 */
 coreliquid_device* open_device_aio(void)
 {
-    coreliquid_device* handle = NULL;
-    handle = search_and_open_device(supported_vids, ARRAY_SIZE(supported_vids), supported_pids, ARRAY_SIZE(supported_pids));
-    if (!handle) {
-        loginfo("Failed to open Coreliquid AIO device.\n");
-    }
-
-    return handle;
+    return search_and_open_device(supported_vids, ARRAY_SIZE(supported_vids), supported_pids, ARRAY_SIZE(supported_pids));
 }

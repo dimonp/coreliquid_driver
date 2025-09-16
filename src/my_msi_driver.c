@@ -9,8 +9,8 @@
 #include "sensors_wrap.h"
 
 // Flags to stop and suspend the daemon
-volatile int stop = 0;
-volatile int suspend = 0;
+static volatile sig_atomic_t is_stop = 0;
+static volatile sig_atomic_t is_suspend = 0;
 
 /**
  * Monitor the CPU temperature and send it to the AIO.
@@ -19,11 +19,11 @@ volatile int suspend = 0;
  */
 void monitor_cpu_temperature(coreliquid_device* handle_s, coreliquid_device* handle_cl)
 {
-    sensors_values_t data;
+    sensors_values_t data = {0};
 
     // Listen to temperature in an infinite loop
-    while (!stop) {
-        if (suspend) {
+    while (!is_stop) {
+        if (is_suspend) {
             loginfo("Suspended, waiting ...\n");
             pause();
             loginfo("Waked up ...\n");
@@ -48,7 +48,7 @@ void monitor_cpu_temperature(coreliquid_device* handle_s, coreliquid_device* han
  */
 void stopit(__attribute__((unused)) int sig)
 {
-    stop = 1;
+    is_stop = 1;
 }
 
 /**
@@ -57,7 +57,7 @@ void stopit(__attribute__((unused)) int sig)
  */
 void suspendit(__attribute__((unused)) int sig)
 {
-    suspend = 1;
+    is_suspend = 1;
 }
 
 /**
@@ -65,7 +65,7 @@ void suspendit(__attribute__((unused)) int sig)
  */
 void resumeit(__attribute__((unused)) int sig)
 {
-    suspend = 0;
+    is_suspend = 0;
 }
 
 /**
@@ -113,17 +113,21 @@ int main(int argc, char *argv[])
 
     coreliquid_device* handle_cl = open_device_aio();
     if (!handle_cl) {
+        logerror("Failed to open Coreliquid AIO device.\n");
+
         exit_status = EXIT_FAILURE;
         goto exit_shutdown;
     }
 
     coreliquid_device* handle_s = open_s_device();
     if (!handle_s) {
+        logerror("Failed to open Coreliquid S device.\n");
+
         exit_status = EXIT_FAILURE;
         goto exit_free_cl;
     }
 
-    detect_sensors();
+    detect_lm_sensors();
 
     int model_idx;
     if (!get_model_index(handle_cl, &model_idx)) {
@@ -142,9 +146,18 @@ int main(int argc, char *argv[])
     loginfo("LED device firmware version: %d.%d\n", version_high, version_low);
 
     set_fan_mode(handle_cl, fan_mode);
+
+    int fw_version;
+    if (!get_device_info(handle_s, &fw_version)) {
+        exit_status = EXIT_FAILURE;
+        goto exit_free;
+    }
+
+    loginfo("Found S device. FW version: %d\n", fw_version);
+
     set_lcm_back_light(handle_s, LCM_DEFAULT_BRIGHTNESS);
     set_lcm_direction(handle_s, LCM_DIR_DEFAULT);
-    set_temperature_unit(handle_s, 1);
+    set_temperature_unit(handle_s, 0);
     set_display_mode(handle_s, SHOW_CPU_FREQ | SHOW_CPU_TEMP, STYLE_3);
 
     // Start daemon if requested

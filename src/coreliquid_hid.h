@@ -28,6 +28,7 @@ void shutdown_coreliquid(void);
 coreliquid_device* search_and_open_device(const uint16_t *vids, size_t vids_len, const uint16_t *pids, size_t pids_len);
 void close_coreliquid_device(coreliquid_device *cl_handle);
 int set_report(coreliquid_device* cl_handle, uint8_t* output_report, size_t length);
+int get_report(coreliquid_device* cl_handle, uint8_t* input_report, size_t length);
 int write_output(coreliquid_device* cl_handle, uint8_t* output_report, size_t length);
 int read_input(coreliquid_device* cl_handle, uint8_t* input_report, size_t length);
 
