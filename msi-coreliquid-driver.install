@@ -1,0 +1,14 @@
+post_install() {
+    udevadm control --reload-rules && udevadm trigger
+    systemctl daemon-reload
+    systemctl enable --now my_msi_coreliquid_driver.service
+}
+
+post_upgrade() {
+    systemctl daemon-reload
+    systemctl restart my_msi_coreliquid_driver.service
+}
+
+pre_remove() {
+    systemctl disable --now my_msi_coreliquid_driver.service
+}
