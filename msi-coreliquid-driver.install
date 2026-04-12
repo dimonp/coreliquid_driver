@@ -1,14 +1,23 @@
 post_install() {
     udevadm control --reload-rules && udevadm trigger
     systemctl daemon-reload
-    systemctl enable --now my_msi_coreliquid_driver.service
+    systemctl enable --now my_msi_coreliquid_driver@5.service
 }
 
 post_upgrade() {
     systemctl daemon-reload
-    systemctl restart my_msi_coreliquid_driver.service
+
+    CURRENT_UNIT=$(systemctl list-units --state=active --no-legend "my_msi_coreliquid_driver@*" | awk '{print $1}')
+    if [ -n "$CURRENT_UNIT" ]; then
+        systemctl restart "$CURRENT_UNIT"
+    else
+        systemctl start my_msi_coreliquid_driver@5.service
+    fi
 }
 
 pre_remove() {
-    systemctl disable --now my_msi_coreliquid_driver.service
+    CURRENT_UNITS=$(systemctl list-units --all --no-legend "my_msi_coreliquid_driver@*" | awk '{print $1}')
+    for unit in $CURRENT_UNITS; do
+        systemctl disable --now "$unit"
+    done
 }

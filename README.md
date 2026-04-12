@@ -36,7 +36,7 @@ but having the system library is recommended for stability.
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release ..
-cmake --build . --config Release
+cmake --build .
 ```
 
 Here, I use libhidapi-hidraw, but I guess it would work as well with libhidapi-libusb0.
@@ -48,6 +48,12 @@ After building, you can install the driver system‑wide:
 
 ```bash
 sudo cmake --install . --prefix "/usr/local"
+```
+
+You can use install_manifest.txt to remove the installed files:
+
+```bash
+cat install_manifest.txt | xargs sudo rm
 ```
 
 This will install:
@@ -96,12 +102,22 @@ Enable and start it with:
 
 ```bash
 sudo systemctl daemon-reload
-sudo systemctl enable my_msi_coreliquid_driver.service
-sudo systemctl start my_msi_coreliquid_driver.service
+sudo systemctl enable my_msi_coreliquid_driver@5.service
+sudo systemctl start my_msi_coreliquid_driver@5.service
 ```
 
-The service runs with mode `5` (SMART) by default. To change the mode, edit the service file
-(`/usr/lib/systemd/system/my_msi_coreliquid_driver.service`) and modify the `-M` argument.
+Switch to Game mode (2):
+
+```bash
+systemctl stop my_msi_coreliquid_driver@5
+systemctl start my_msi_coreliquid_driver@2
+```
+
+Make Silent (0) mode the default mode when booting the system:
+
+```bash
+systemctl enable my_msi_coreliquid_driver@0
+```
 
 ## Arch Linux
 
@@ -110,7 +126,6 @@ You can build from source using the provided PKGBUILD.
 ```bash
 makepkg -i
 ```
-
 
 ## License
 

@@ -1,0 +1,17 @@
+[Unit]
+Description=MSI MEG CoreLiquid S360 Daemon (Mode %i)
+Conflicts=my_msi_coreliquid_driver@0.service my_msi_coreliquid_driver@1.service my_msi_coreliquid_driver@2.service my_msi_coreliquid_driver@4.service my_msi_coreliquid_driver@5.service
+
+
+[Service]
+Type=simple
+ExecStart=@INSTALL_PREFIX@/bin/my_msi_coreliquid_driver -M %i startd
+StandardOutput=journal
+StandardError=journal
+ExecReload=/bin/kill -HUP $MAINPID
+ExecStop=/bin/kill -TERM $MAINPID
+KillMode=mixed
+Restart=on-failure
+
+[Install]
+WantedBy=multi-user.target
