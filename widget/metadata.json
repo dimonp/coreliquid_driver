@@ -1,0 +1,19 @@
+{
+    "KPlugin": {
+        "Authors": [
+            {
+                "Email": "dmitrypeter@gmail.com",
+                "Name": "Dmitry Peter"
+            }
+        ],
+        "Name": "MSI CoreLiquid Control",
+        "Category": "System Information",
+        "Description": "Switch fan and pump modes for MSI MEG CoreLiquid S360",
+        "Icon": "speedometer",
+        "Id": "com.msi.mycoreliquid.switcher",
+        "Version": "1.0",
+        "License": "GPL-3.0+"
+    },
+    "X-Plasma-API-Minimum-Version": "6.0",
+    "KPackageStructure": "Plasma/Applet"
+}

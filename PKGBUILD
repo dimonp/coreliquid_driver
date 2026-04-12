@@ -10,8 +10,12 @@ makedepends=('cmake' 'gcc')
 install=msi-coreliquid-driver.install
 options=('!debug')
 
-source=("99-msi-coreliquid.rules")
-sha256sums=('SKIP')
+source=(
+    "99-msi-coreliquid.rules"
+    "10-msi-coreliquid.rules")
+sha256sums=(
+    'SKIP'
+    'SKIP')
 
 build() {
     cmake -B build -S "$startdir" \
@@ -25,5 +29,20 @@ build() {
 package() {
     DESTDIR="${pkgdir}" cmake --install build
 
+    # udev rules
     install -Dm644 "${srcdir}/99-msi-coreliquid.rules" "${pkgdir}/usr/lib/udev/rules.d/99-msi-coreliquid.rules"
+    # polkit rules
+    install -Dm644 "${srcdir}/10-msi-coreliquid.rules" "${pkgdir}/usr/share/polkit-1/rules.d/10-msi-coreliquid.rules"
+
+    if command -v kpackagetool6 >/dev/null 2>&1; then
+        echo "  -> Plasma 6 environment detected. Installing widget..."
+
+        local _widget_id="com.msi.mycoreliquid.switcher"
+        local _dest="$pkgdir/usr/share/plasma/plasmoids/$_widget_id"
+
+        install -d "$_dest"
+        cp -r "$startdir/widget/"* "$_dest/"
+    else
+        echo "  -> kpackagetool6 not found. Skipping Plasma widget installation."
+    fi
 }

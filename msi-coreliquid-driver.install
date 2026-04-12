@@ -1,23 +1,31 @@
 post_install() {
-    udevadm control --reload-rules && udevadm trigger
+    if [[ -d /run/udev ]]; then
+        udevadm control --reload-rules && udevadm trigger
+    fi
     systemctl daemon-reload
+    echo "  -> Enabling and starting my_msi_coreliquid_driver@5.service..."
     systemctl enable --now my_msi_coreliquid_driver@5.service
+
+    if command -v kpackagetool6 >/dev/null 2>&1; then
+        echo "  -> Updating Plasma widget index..."
+        kpackagetool6 --type Plasma/Applet --list > /dev/null 2>&1 || true
+    fi
 }
 
 post_upgrade() {
     systemctl daemon-reload
 
-    CURRENT_UNIT=$(systemctl list-units --state=active --no-legend "my_msi_coreliquid_driver@*" | awk '{print $1}')
-    if [ -n "$CURRENT_UNIT" ]; then
-        systemctl restart "$CURRENT_UNIT"
+    local current_unit=$(systemctl list-units --state=active --no-legend "my_msi_coreliquid_driver@*" | awk '{print $1}')
+    if [ -n "$current_unit" ]; then
+        systemctl restart "$current_unit"
     else
         systemctl start my_msi_coreliquid_driver@5.service
     fi
 }
 
 pre_remove() {
-    CURRENT_UNITS=$(systemctl list-units --all --no-legend "my_msi_coreliquid_driver@*" | awk '{print $1}')
-    for unit in $CURRENT_UNITS; do
+    local current_units=$(systemctl list-units --all --full --no-legend "my_msi_coreliquid_driver@*" | awk '{print $1}')
+    for unit in $current_units; do
         systemctl disable --now "$unit"
     done
 }
