@@ -18,12 +18,33 @@ PlasmoidItem {
 
     Plasmoid.backgroundHints: PlasmaCore.Types.DefaultBackground | PlasmaCore.Types.ConfigurableBackground
 
-    preferredRepresentation: (plasmoid.location === PlasmaCore.Types.Floating)
-                             ? fullComp
-                             : compactComp
+    preferredRepresentation: compactComp
+    // preferredRepresentation: (plasmoid.location === PlasmaCore.Types.Floating)
+    //                          ? fullComp
+    //                          : compactComp
 
     compactRepresentation: compactComp
     fullRepresentation: fullComp
+
+    function get_mode_name(mode_id) {
+        switch (mode_id) {
+            case "0": return "silent";
+            case "1": return "balance";
+            case "2": return "game";
+            case "5": return "smart";
+            default:  return "Unknown";
+        }
+    }
+
+    onActiveModeChanged: {
+        console.log("MSI-DEBUG: Mode changed to " + root.activeMode);
+
+        var mode_name = get_mode_name(root.activeMode);
+        var icon_path = "../icons/fan-" + mode_name + ".png";
+
+        plasmoid.icon = Qt.resolvedUrl(icon_path);
+        root.toolTipSubText = "Current Mode: " + mode_name;
+    }
 
     Plasma5Support.DataSource {
         id: executable
@@ -33,7 +54,7 @@ PlasmoidItem {
             if (sourceName.indexOf("list-units") !== -1) {
                 // Parse mode number from unit name like ...@5.service
                 let match = data.stdout.match(/@(\d)/);
-                activeMode = match ? match[1] : "-1";
+                root.activeMode = match ? match[1] : "-1";
             }
             disconnectSource(sourceName);
         }
@@ -48,15 +69,16 @@ PlasmoidItem {
     function runCmd(mode) {
         let command = "systemctl stop my_msi_coreliquid_driver@* && systemctl start my_msi_coreliquid_driver@" + mode;
         executable.connectSource(command);
-        root.expanded = false;
         // Immediate update for better UX
-        activeMode = mode.toString();
+        root.activeMode = mode.toString()
+        root.expanded = false;
     }
 
     Component {
         id: compactComp
         PlasmaComponents.ToolButton {
-            icon.name: Qt.resolvedUrl("../icons/fan.png")
+            icon.source: plasmoid.icon
+
             onClicked: root.expanded = !root.expanded
         }
     }
