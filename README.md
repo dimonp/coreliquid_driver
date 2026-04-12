@@ -127,6 +127,41 @@ You can build from source using the provided PKGBUILD.
 makepkg -i
 ```
 
+## Widget
+
+A Plasma 6 applet that provides a convenient GUI to switch between cooling modes of the MSI CoreLiquid S360 AIO. The widget displays the current mode and allows you to switch between Silent, Balance, Game, and Smart modes with a single click.
+
+### Screenshots
+
+![Widget in compact mode](pictures/widget.png)
+
+*Compact representation in the system tray.*
+
+![Widget expanded with mode buttons](pictures/widget-tray.png)
+
+*Expanded view showing all available cooling modes.*
+
+### Installation
+
+1. Ensure you have Plasma 6 installed.
+2. Copy the `widget` folder to your local Plasma applets directory:
+   ```bash
+   cp -r widget ~/.local/share/plasma/plasmoids/com.msi.mycoreliquid.switcher
+   ```
+3. Right‑click on the panel (or desktop) → **Add Widgets** → find **MSI CoreLiquid S360 Control** and drag it to the panel.
+
+Alternatively, you can install system‑wide (requires root):
+```bash
+sudo cp -r widget /usr/share/plasma/plasmoids/com.msi.mycoreliquid.switcher
+```
+
+### Usage
+
+Click the widget icon in the system tray to expand it, then select the desired cooling mode. The widget will automatically stop the previous systemd service and start the new one (e.g., `my_msi_coreliquid_driver@2` for Game mode). The icon changes to reflect the active mode.
+
+The widget polls the systemd unit status every 5 seconds to keep the displayed mode up‑to‑date.
+
+
 ## License
 
 GPLv3 – see the LICENSE file.

@@ -1,0 +1,56 @@
+libusb initialized successfully.
+Enumerating USB devices...
+
+Device 8: ID 0db0:9ba6 (Bus 4, Address 4)
+Manufacturer: nuvoTon
+Product Name: USB HID
+  Port Path: 6.4
+  Parent Host Port Number: 4
+	Interface number: 0
+	Number of endpoints: 2
+	HID class: 0x03
+	HID subclass: 0x00
+	HID protocol: 0x00
+		-- Endpoint: 0
+		Address: 0x81
+		Direction: IN
+		Type: Interrupt
+		Max Packet Size: 512
+		Interval: 1
+		Synchronization: 0x00
+		Attributes: 0x03
+		-- Endpoint: 1
+		Address: 0x02
+		Direction: OUT
+		Type: Interrupt
+		Max Packet Size: 1024
+		Interval: 1
+		Synchronization: 0x00
+		Attributes: 0x03
+
+Device 15: ID 0db0:6a05 (Bus 4, Address 3)
+Manufacturer: MSI
+Product Name: MEG Core Liquid S360
+  Port Path: 6.1
+  Parent Host Port Number: 1
+	Interface number: 1
+	Number of endpoints: 2
+	HID class: 0x03
+	HID subclass: 0x00
+	HID protocol: 0x00
+		-- Endpoint: 0
+		Address: 0x81
+		Direction: IN
+		Type: Interrupt
+		Max Packet Size: 64
+		Interval: 5
+		Synchronization: 0x00
+		Attributes: 0x03
+		-- Endpoint: 1
+		Address: 0x02
+		Direction: OUT
+		Type: Interrupt
+		Max Packet Size: 64
+		Interval: 5
+		Synchronization: 0x00
+		Attributes: 0x03

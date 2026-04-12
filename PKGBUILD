@@ -1,5 +1,5 @@
 pkgname=msi-meg-coreliquid-s360-driver
-pkgver=0.1.1
+pkgver=0.1.2
 pkgrel=1
 pkgdesc="Driver MSI Coreliquid MEG S360 (GPL3, hidapi)"
 arch=('x86_64')

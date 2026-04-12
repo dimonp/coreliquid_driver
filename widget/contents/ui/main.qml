@@ -18,10 +18,9 @@ PlasmoidItem {
 
     Plasmoid.backgroundHints: PlasmaCore.Types.DefaultBackground | PlasmaCore.Types.ConfigurableBackground
 
-    preferredRepresentation: compactComp
-    // preferredRepresentation: (plasmoid.location === PlasmaCore.Types.Floating)
-    //                          ? fullComp
-    //                          : compactComp
+    preferredRepresentation: (plasmoid.location === PlasmaCore.Types.Floating)
+                             ? fullComp
+                             : compactComp
 
     compactRepresentation: compactComp
     fullRepresentation: fullComp
