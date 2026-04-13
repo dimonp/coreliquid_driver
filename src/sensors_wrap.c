@@ -1,10 +1,13 @@
 #include <stdlib.h>
-#include "string.h"
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
 #include <sensors/sensors.h>
 
 #include "sensors_wrap.h"
 #include "coreliquid_hid.h"
 
+#define MAX(a,b) (((a)>(b))?(a):(b))
 static struct {
     const sensors_chip_name *name_cpu_temp;
     int idx_cpu_temp;
@@ -176,25 +179,37 @@ void detect_lm_sensors(void)
     }
 }
 
-int get_cpu_frequency(void)
-{
-    long long current_freq;
-    int result = 0;
-    FILE *fp;
+int get_active_cores_avg_freq(void) {
+    long long total_freq = 0;
+    int active_cores = 0;
+    int num_procs = sysconf(_SC_NPROCESSORS_CONF);
 
-    fp = fopen("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq", "r");
-    if (fp == NULL) {
-        return 0;
+    for (int i = 0; i < num_procs; i++) {
+        char path[128];
+        long long cur, min;
+
+        // Current frequency
+        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_cur_freq", i);
+        FILE *f_cur = fopen(path, "r");
+
+        // Minimum frequency
+        snprintf(path, sizeof(path), "/sys/devices/system/cpu/cpu%d/cpufreq/scaling_min_freq", i);
+        FILE *f_min = fopen(path, "r");
+
+        if (f_cur && f_min) {
+            if (fscanf(f_cur, "%lld", &cur) == 1 && fscanf(f_min, "%lld", &min) == 1) {
+                // Check if the current frequency is above 10% of the minimum frequency
+                if (cur > (min * 1.1)) {
+                    total_freq += cur;
+                    active_cores++;
+                }
+            }
+        }
+        if (f_cur) fclose(f_cur);
+        if (f_min) fclose(f_min);
     }
 
-    // Read the frequency value
-    if (fscanf(fp, "%lld", &current_freq) == 1) {
-        result = (int)(current_freq / 1000);
-    }
-
-    fclose(fp);
-
-    return result;
+    return (active_cores > 0) ? (int)(total_freq / active_cores / 1000) : 0;
 }
 
 int get_cpu_usage(void)
@@ -242,7 +257,7 @@ void fetch_sensor_values(sensors_values_t *data)
         return;
     }
 
-    data->cpu_freq = get_cpu_frequency();
+    data->cpu_freq = get_active_cores_avg_freq();
     data->cpu_usage = get_cpu_usage();
 
     if (sensors_bank.name_cpu_temp != NULL) {
