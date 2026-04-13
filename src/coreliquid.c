@@ -307,13 +307,11 @@ void set_fan_duty_mode(coreliquid_device* handle, uint8_t fan_mode)
         },
     };
 
-    if (fan_mode == FAN_MODE_CUSTOM) {
-        memcpy(message.config.duty_cycle_1, fan_duty_preset_1, sizeof(fan_duty_preset_1));
-        memcpy(message.config.duty_cycle_2, fan_duty_preset_1, sizeof(fan_duty_preset_1));
-        memcpy(message.config.duty_cycle_3, fan_duty_preset_1, sizeof(fan_duty_preset_1));
-        memcpy(message.config.duty_cycle_4, fan_duty_preset_4, sizeof(fan_duty_preset_4));
-        memcpy(message.config.duty_cycle_4, fan_duty_preset_5, sizeof(fan_duty_preset_5));
-    }
+    memcpy(message.config.duty_cycle_1, fan_duty_preset_1, sizeof(fan_duty_preset_1));
+    memcpy(message.config.duty_cycle_2, fan_duty_preset_1, sizeof(fan_duty_preset_1));
+    memcpy(message.config.duty_cycle_3, fan_duty_preset_1, sizeof(fan_duty_preset_1));
+    memcpy(message.config.duty_cycle_4, fan_duty_preset_4, sizeof(fan_duty_preset_4));
+    memcpy(message.config.duty_cycle_5, fan_duty_preset_5, sizeof(fan_duty_preset_5));
 
     write_output(handle, message.raw_buffer, sizeof(message.raw_buffer));
 }
@@ -344,13 +342,11 @@ void set_fan_temperature_mode(coreliquid_device* handle, uint8_t fan_mode)
         }
     };
 
-    if (fan_mode == FAN_MODE_CUSTOM) {
-        memcpy(message.config.fan_temp_1, fan_temp_preset_1, sizeof(fan_temp_preset_1));
-        memcpy(message.config.fan_temp_2, fan_temp_preset_1, sizeof(fan_temp_preset_1));
-        memcpy(message.config.fan_temp_3, fan_temp_preset_1, sizeof(fan_temp_preset_1));
-        memcpy(message.config.fan_temp_4, fan_temp_preset_4, sizeof(fan_temp_preset_4));
-        memcpy(message.config.fan_temp_5, fan_temp_preset_5, sizeof(fan_temp_preset_5));
-    }
+    memcpy(message.config.fan_temp_1, fan_temp_preset_1, sizeof(fan_temp_preset_1));
+    memcpy(message.config.fan_temp_2, fan_temp_preset_1, sizeof(fan_temp_preset_1));
+    memcpy(message.config.fan_temp_3, fan_temp_preset_1, sizeof(fan_temp_preset_1));
+    memcpy(message.config.fan_temp_4, fan_temp_preset_4, sizeof(fan_temp_preset_4));
+    memcpy(message.config.fan_temp_5, fan_temp_preset_5, sizeof(fan_temp_preset_5));
 
     write_output(handle, message.raw_buffer, sizeof(message.raw_buffer));
 }
