@@ -9,6 +9,7 @@ import org.kde.plasma.plasmoid
 import org.kde.plasma.core as PlasmaCore
 import org.kde.plasma.components 3.0 as PlasmaComponents
 import org.kde.plasma.plasma5support as Plasma5Support
+import org.kde.kirigami as Kirigami
 
 PlasmoidItem {
     id: root
@@ -136,6 +137,9 @@ PlasmoidItem {
                 PlasmaComponents.Label {
                     text: root.fanRadiatorSpeed + " rpm"
                 }
+                Kirigami.Separator {
+                    Layout.fillWidth: true
+                }
 
                 PlasmaComponents.Label {
                     text: "Water block fan speed:"
@@ -145,6 +149,9 @@ PlasmoidItem {
                 PlasmaComponents.Label {
                     text: root.fanWaterBlockSpeed + " rpm"
                 }
+                Kirigami.Separator {
+                    Layout.fillWidth: true
+                }
 
                 PlasmaComponents.Label {
                     text: "Pump speed:"
@@ -153,6 +160,9 @@ PlasmoidItem {
                 }
                 PlasmaComponents.Label {
                     text: root.pumpSpeed + " rpm"
+                }
+                Kirigami.Separator {
+                    Layout.fillWidth: true
                 }
 
                 PlasmaComponents.Label {
