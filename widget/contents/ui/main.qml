@@ -29,7 +29,8 @@ PlasmoidItem {
     compactRepresentation: compactComp
     fullRepresentation: fullComp
 
-    function updateFanSpeed() {
+    function doUpdate() {
+        executable.connectSource("systemctl list-units --state=active --no-legend 'my_msi_coreliquid_driver@*'")
         executable.connectSource("qdbus --system io.github.MSICoreliquid /io/github/MSICoreliquid org.freedesktop.DBus.Properties.GetAll io.github.MSICoreliquid")
     }
 
@@ -44,13 +45,18 @@ PlasmoidItem {
     }
 
     onActiveModeChanged: {
-        console.log("MSI-DEBUG: Mode changed to " + root.activeMode);
-
         var mode_name = get_mode_name(root.activeMode);
         var icon_path = "../icons/fan-" + mode_name + ".png";
 
         plasmoid.icon = Qt.resolvedUrl(icon_path);
         root.toolTipSubText = "Current Mode: " + mode_name;
+    }
+
+    onExpandedChanged: {
+        if (expanded) {
+            console.log("MSI-DEBUG: Widget expanded, starting updates.");
+            doUpdate();
+        }
     }
 
     Plasma5Support.DataSource {
@@ -59,16 +65,12 @@ PlasmoidItem {
         connectedSources: []
 
         onNewData: (sourceName, data) => {
-            // Логируем для отладки
-            console.log("MSI-DEBUG Source:", sourceName);
-
             if (sourceName.indexOf("list-units") !== -1) {
                 let match = data.stdout.match(/@(\d)/);
                 root.activeMode = match ? match[1] : "-1";
                 disconnectSource(sourceName);
             }
             else if (sourceName.indexOf("io.github.MSICoreliquid") !== -1) {
-                console.log("MSICoreliquid", data.stdout)
                 let lines = data.stdout.split('\n');
                 lines.forEach(line => {
                     let parts = line.split(':');
@@ -92,8 +94,9 @@ PlasmoidItem {
     Timer {
         interval: 5000; running: true; repeat: true; triggeredOnStart: true
         onTriggered: {
-            executable.connectSource("systemctl list-units --state=active --no-legend 'my_msi_coreliquid_driver@*'")
-            root.updateFanSpeed();
+            if (root.expanded) {
+                root.doUpdate();
+            }
         }
     }
 
@@ -109,7 +112,6 @@ PlasmoidItem {
         id: compactComp
         PlasmaComponents.ToolButton {
             icon.source: plasmoid.icon
-
             onClicked: root.expanded = !root.expanded
         }
     }
