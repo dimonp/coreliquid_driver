@@ -1,17 +1,18 @@
 {
     "KPlugin": {
+        "Name": "MSI CoreLiquid S360 Control",
+        "Category": "System Information",
+        "Description": "Switch fan and pump modes for MSI MEG CoreLiquid S360",
+        "Icon": "speedometer",
+        "Id": "io.github.msicoreliquid.switcher",
         "Authors": [
             {
                 "Email": "dmitrypeter@gmail.com",
                 "Name": "Dmitry Peter"
             }
         ],
-        "Name": "MSI CoreLiquid S360 Control",
-        "Category": "System Information",
-        "Description": "Switch fan and pump modes for MSI MEG CoreLiquid S360",
-        "Icon": "speedometer",
-        "Id": "io.github.msicoreliquid.switcher",
-        "Version": "1.0",
+        "Website": "https://github.com/dimonp/coreliquid_driver",
+        "Version": "0.1.0",
         "License": "GPL-3.0+"
     },
     "X-Plasma-API-Minimum-Version": "6.0",

@@ -21,6 +21,14 @@ PlasmoidItem {
     property int pumpSpeed: 0
     property int waterTemp: 0
 
+    readonly property string getListSysctlUnits: `systemctl list-units --state=active --no-legend \
+                                                 'my_msi_coreliquid_driver@*'`
+
+    readonly property string getAllPropsCmd: `qdbus --system io.github.MSICoreliquid \
+                                              /io/github/MSICoreliquid \
+                                              org.freedesktop.DBus.Properties.GetAll \
+                                              io.github.MSICoreliquid`
+
     Plasmoid.backgroundHints: PlasmaCore.Types.DefaultBackground | PlasmaCore.Types.ConfigurableBackground
 
     preferredRepresentation: (plasmoid.location === PlasmaCore.Types.Floating)
@@ -31,8 +39,10 @@ PlasmoidItem {
     fullRepresentation: fullComp
 
     function doUpdate() {
-        executable.connectSource("systemctl list-units --state=active --no-legend 'my_msi_coreliquid_driver@*'")
-        executable.connectSource("qdbus --system io.github.MSICoreliquid /io/github/MSICoreliquid org.freedesktop.DBus.Properties.GetAll io.github.MSICoreliquid")
+        executable.connectSource(getListSysctlUnits)
+        if (plasmoid.configuration.showSensors) {
+            executable.connectSource(getAllPropsCmd)
+        }
     }
 
     function get_mode_name(mode_id) {
@@ -54,7 +64,7 @@ PlasmoidItem {
     }
 
     onExpandedChanged: {
-        if (expanded) {
+        if (root.expanded) {
             doUpdate();
         }
     }
@@ -92,7 +102,11 @@ PlasmoidItem {
 
     // Timer to refresh every 5 seconds
     Timer {
-        interval: 5000; running: true; repeat: true; triggeredOnStart: true
+        interval: plasmoid.configuration.updateInterval
+        running: true
+        repeat: true
+        triggeredOnStart: true
+
         onTriggered: {
             if (root.expanded) {
                 root.doUpdate();
@@ -124,10 +138,8 @@ PlasmoidItem {
             id: mainLayout
             spacing: 10
 
-            Layout.preferredWidth: implicitWidth
-            Layout.preferredHeight: implicitHeight
-
             ColumnLayout {
+                visible: plasmoid.configuration.showSensors
                 Layout.alignment: Qt.AlignBottom
 
                 PlasmaComponents.Label {
