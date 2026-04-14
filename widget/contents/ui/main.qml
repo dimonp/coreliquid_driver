@@ -54,7 +54,6 @@ PlasmoidItem {
 
     onExpandedChanged: {
         if (expanded) {
-            console.log("MSI-DEBUG: Widget expanded, starting updates.");
             doUpdate();
         }
     }
