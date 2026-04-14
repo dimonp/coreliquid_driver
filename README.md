@@ -147,7 +147,7 @@ A Plasma 6 applet that provides a convenient GUI to switch between cooling modes
 2. Copy the `widget` folder to your local Plasma applets directory:
 
 ```bash
-cp -r widget ~/.local/share/plasma/plasmoids/com.msi.mycoreliquid.switcher
+cp -r widget ~/.local/share/plasma/plasmoids/io.github.msicoreliquid.switcher
 ```
 
 3. Right‑click on the panel (or desktop) → **Add Widgets** → find **MSI CoreLiquid S360 Control** and drag it to the panel.
@@ -155,7 +155,7 @@ cp -r widget ~/.local/share/plasma/plasmoids/com.msi.mycoreliquid.switcher
 Alternatively, you can install system‑wide (requires root):
 
 ```bash
-sudo cp -r widget /usr/share/plasma/plasmoids/com.msi.mycoreliquid.switcher
+sudo cp -r widget /usr/share/plasma/plasmoids/io.github.msicoreliquid.switcher
 ```
 
 #### Widget usage

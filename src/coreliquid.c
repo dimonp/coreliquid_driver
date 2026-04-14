@@ -1,8 +1,8 @@
+#include "coreliquid.h"
+
 #include <unistd.h>
 #include <string.h>
-#include <inttypes.h>
-
-#include "coreliquid.h"
+#include <stdint.h>
 
 #define HID_REPORT_SIZE 64
 #define REPORT_ID_LED 0x01
@@ -98,8 +98,10 @@ struct fan_status_response {
     uint16_t fan_speed_3;
     uint16_t fan_speed_4; // Water block fan
     uint16_t fan_speed_5; // Pump fan
-    uint16_t temperature_in;
-    uint16_t temperature_out;  // Liquid temp
+    uint8_t temperature_inlet;
+    uint8_t temperature_inlet_unused;
+    uint8_t temperature_outlet;  // Liquid temp
+    uint8_t temperature_outlet_unused;
     uint16_t temperature_sensor_1;
     uint16_t temperature_sensor_2;
     uint16_t fan_duty_1;
@@ -210,7 +212,6 @@ void set_reset_mcu(coreliquid_device* handle)
             .command_code = SET_RESET_MCU,
         }
     };
-
     write_output(handle, message.raw_buffer, sizeof(message.raw_buffer));
 }
 
@@ -218,12 +219,10 @@ void set_reset_mcu(coreliquid_device* handle)
 * Retrieves the status of the Coreliquid cooler device.
 *
 * @param handle Pointer to the CoreLiquid device handle.
-* @param temperature_in Pointer to store the input temperature value (in degrees Celsius).
-* @param temperature_out Pointer to store the output temperature value (in degrees Celsius).
-* @param fan_speed Pointer to store the fan speed value (in RPM).
+* @param status Pointer to store the cooler status values.
 * @return 1 if the cooler status was successfully retrieved, 0 otherwise.
 */
-int get_cooler_status(coreliquid_device* handle, int* temperature_in, int* temperature_out, int* fan_speed)
+int get_cooler_status(coreliquid_device* handle, cooler_status_t* status)
 {
     struct message_fan_status_response message_input;
     struct message_request message;
@@ -243,13 +242,14 @@ int get_cooler_status(coreliquid_device* handle, int* temperature_in, int* tempe
     if (read_input(handle, message_input.raw_buffer, sizeof(message_input.raw_buffer))
             && message_input.report.header.command_code == GET_COOLER_STATUS) {
 
-        *temperature_in = message_input.report.temperature_in;
-        *temperature_out = message_input.report.temperature_out;
-        *fan_speed = message_input.report.fan_speed_1;
-
+        *status = (struct cooler_status) {
+            .liquid_temperature    = message_input.report.temperature_outlet,
+            .fan_radiator_speed    = message_input.report.fan_speed_1,
+            .fan_water_block_speed = message_input.report.fan_speed_4,
+            .pump_speed            = message_input.report.fan_speed_5,
+        };
         return 1;
     }
-
     return 0;
 }
 
@@ -275,7 +275,6 @@ void set_oled_cpu_status(coreliquid_device* handle, int temperature, int frequen
             .cpu_temp = temperature,
         }
     };
-
     write_output(handle, message.raw_buffer, sizeof(message.raw_buffer));
 }
 
@@ -385,7 +384,6 @@ void set_oled_show_clock(coreliquid_device* handle, uint8_t style)
             .style = style,
         }
     };
-
     write_output(handle, message.raw_buffer, sizeof(message.raw_buffer));
 }
 
@@ -424,10 +422,8 @@ int get_model_index(coreliquid_device* handle, int* model_idx)
         }
 
         *model_idx = message_input.report.value;
-
         return 1;
     }
-
     return 0;
 }
 
@@ -461,10 +457,8 @@ int get_fw_version_ldprom(coreliquid_device* handle, int* version_major, int* ve
 
         *version_major = message_input.report.value >> 4;
         *version_minor = message_input.report.value & 0xf;
-
         return 1;
     }
-
     return 0;
 }
 

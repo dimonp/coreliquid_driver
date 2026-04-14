@@ -15,6 +15,10 @@ PlasmoidItem {
 
     // Current active mode (default -1 until detected)
     property string activeMode: "-1"
+    property int fanRadiatorSpeed: 0
+    property int fanWaterBlockSpeed: 0
+    property int pumpSpeed: 0
+    property int waterTemp: 0
 
     Plasmoid.backgroundHints: PlasmaCore.Types.DefaultBackground | PlasmaCore.Types.ConfigurableBackground
 
@@ -24,6 +28,10 @@ PlasmoidItem {
 
     compactRepresentation: compactComp
     fullRepresentation: fullComp
+
+    function updateFanSpeed() {
+        executable.connectSource("qdbus --system io.github.MSICoreliquid /io/github/MSICoreliquid org.freedesktop.DBus.Properties.GetAll io.github.MSICoreliquid")
+    }
 
     function get_mode_name(mode_id) {
         switch (mode_id) {
@@ -49,20 +57,44 @@ PlasmoidItem {
         id: executable
         engine: "executable"
         connectedSources: []
+
         onNewData: (sourceName, data) => {
+            // Логируем для отладки
+            console.log("MSI-DEBUG Source:", sourceName);
+
             if (sourceName.indexOf("list-units") !== -1) {
-                // Parse mode number from unit name like ...@5.service
                 let match = data.stdout.match(/@(\d)/);
                 root.activeMode = match ? match[1] : "-1";
+                disconnectSource(sourceName);
             }
-            disconnectSource(sourceName);
+            else if (sourceName.indexOf("io.github.MSICoreliquid") !== -1) {
+                console.log("MSICoreliquid", data.stdout)
+                let lines = data.stdout.split('\n');
+                lines.forEach(line => {
+                    let parts = line.split(':');
+                    if (parts.length >= 2) {
+                        let name = parts[0].trim();
+                        let value = parseInt(parts[1].trim());
+
+                        if (name === "FanRadiatorSpeed") root.fanRadiatorSpeed = value;
+                        else if (name === "FanWaterBlockSpeed") root.fanWaterBlockSpeed = value;
+                        else if (name === "PumpSpeed") root.pumpSpeed = value;
+                        else if (name === "LiquidTemp") root.waterTemp = value;
+                    }
+                });
+
+                disconnectSource(sourceName);
+            }
         }
     }
 
-    // Timer to refresh the active mode indicator every 5 seconds
+    // Timer to refresh every 5 seconds
     Timer {
         interval: 5000; running: true; repeat: true; triggeredOnStart: true
-        onTriggered: executable.connectSource("systemctl list-units --state=active --no-legend 'my_msi_coreliquid_driver@*'")
+        onTriggered: {
+            executable.connectSource("systemctl list-units --state=active --no-legend 'my_msi_coreliquid_driver@*'")
+            root.updateFanSpeed();
+        }
     }
 
     function runCmd(mode) {
@@ -84,19 +116,57 @@ PlasmoidItem {
 
     Component {
         id: fullComp
-        Item {
-            Layout.minimumWidth: 100
-            Layout.preferredWidth: 100
-            Layout.maximumWidth: 100
-            Layout.minimumHeight: mainLayout.implicitHeight
-            Layout.preferredHeight: mainLayout.implicitHeight
+
+        RowLayout {
+            id: mainLayout
+            spacing: 10
+
+            Layout.preferredWidth: implicitWidth
+            Layout.preferredHeight: implicitHeight
 
             ColumnLayout {
-                id: mainLayout
-                anchors.centerIn: parent
-                width: parent.width
-                spacing: 8
-                Layout.margins: 10
+                Layout.alignment: Qt.AlignBottom
+
+                PlasmaComponents.Label {
+                    text: "Radiator fan speed:"
+                    font.pixelSize: 10
+                    opacity: 0.7
+                }
+                PlasmaComponents.Label {
+                    text: root.fanRadiatorSpeed + " rpm"
+                }
+
+                PlasmaComponents.Label {
+                    text: "Water block fan speed:"
+                    font.pixelSize: 10
+                    opacity: 0.7
+                }
+                PlasmaComponents.Label {
+                    text: root.fanWaterBlockSpeed + " rpm"
+                }
+
+                PlasmaComponents.Label {
+                    text: "Pump speed:"
+                    font.pixelSize: 10
+                    opacity: 0.7
+                }
+                PlasmaComponents.Label {
+                    text: root.pumpSpeed + " rpm"
+                }
+
+                PlasmaComponents.Label {
+                    text: "Water temperature:"
+                    font.pixelSize: 10
+                    opacity: 0.7
+                }
+                PlasmaComponents.Label {
+                    text: root.waterTemp+" ℃"
+                }
+            }
+
+            ColumnLayout {
+                spacing: 5
+                Layout.preferredWidth: 100
 
                 PlasmaComponents.Label {
                     text: "Cooling Mode"

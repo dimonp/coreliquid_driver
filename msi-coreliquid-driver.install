@@ -10,6 +10,7 @@ post_install() {
         echo "  -> Updating Plasma widget index..."
         kpackagetool6 --type Plasma/Applet --list > /dev/null 2>&1 || true
     fi
+    systemctl reload dbus
 }
 
 post_upgrade() {

@@ -10,7 +10,7 @@
         "Category": "System Information",
         "Description": "Switch fan and pump modes for MSI MEG CoreLiquid S360",
         "Icon": "speedometer",
-        "Id": "com.msi.mycoreliquid.switcher",
+        "Id": "io.github.msicoreliquid.switcher",
         "Version": "1.0",
         "License": "GPL-3.0+"
     },

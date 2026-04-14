@@ -2,18 +2,14 @@
 #define _CORELIQUID_HID__H
 
 #include <stddef.h>
-#include <inttypes.h>
+#include <stdint.h>
 
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
-
-void loginfo(const char *format, ...);
-void logerror(const char *format, ...);
-
 
 struct coreliquid_device_;
 typedef struct coreliquid_device_ coreliquid_device;
 
-void init_coreliquid(int syslog);
+void init_coreliquid(void);
 void shutdown_coreliquid(void);
 
 /**

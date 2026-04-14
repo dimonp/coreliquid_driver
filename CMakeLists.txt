@@ -22,14 +22,19 @@ if (NOT hidapi_FOUND)
     FetchContent_MakeAvailable(hidapi)
 endif()
 
-FIND_LIBRARY(SENSORS_LIBRARY NAMES sensors)
+find_library(SENSORS_LIBRARY NAMES sensors)
+
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(SYSTEMD REQUIRED IMPORTED_TARGET libsystemd)
 
 add_executable(my_msi_coreliquid_driver
     src/my_msi_driver.c
+    src/logger.c src/logger.h
     src/coreliquid_hid.c src/coreliquid_hid.h
     src/coreliquid.c src/coreliquid.h
     src/coreliquid_s.c src/coreliquid_s.h
     src/sensors_wrap.c src/sensors_wrap.h
+    src/sensors_dbus.c src/sensors_dbus.h
 )
 
 target_compile_definitions(my_msi_coreliquid_driver PRIVATE $<$<CONFIG:Debug>:_DEBUG=1>)
@@ -41,7 +46,7 @@ target_link_options(my_msi_coreliquid_driver PRIVATE $<$<CONFIG:Debug>:-fsanitiz
 target_link_libraries(my_msi_coreliquid_driver
     PRIVATE ${SENSORS_LIBRARY}
     PRIVATE hidapi::hidapi
-)
+    PRIVATE PkgConfig::SYSTEMD)
 
 configure_file(
     "${CMAKE_CURRENT_SOURCE_DIR}/service/my_msi_coreliquid_driver@.service.in"

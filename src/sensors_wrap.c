@@ -1,13 +1,13 @@
+#include "sensors_wrap.h"
+#include "coreliquid_hid.h"
+#include "logger.h"
+
 #include <stdlib.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 #include <sensors/sensors.h>
 
-#include "sensors_wrap.h"
-#include "coreliquid_hid.h"
-
-#define MAX(a,b) (((a)>(b))?(a):(b))
 static struct {
     const sensors_chip_name *name_cpu_temp;
     int idx_cpu_temp;
@@ -20,6 +20,20 @@ static struct {
 
 } sensors_bank;
 
+/**
+ * Configuration structure for sensor detection.
+ *
+ * Defines the criteria used to identify and match hardware monitoring sensors
+ * from the libsensors library. Each configuration specifies a chip prefix,
+ * feature type, feature name, and subfeature type to look for.
+ *
+ * @field chip_prefix      Chip name prefix pattern (pipe-separated alternatives)
+ * @field feature_type     Type of sensor feature (e.g., SENSORS_FEATURE_TEMP)
+ * @field feature_name     Feature name pattern (pipe-separated alternatives)
+ * @field subfeature_type  Subfeature type (e.g., SENSORS_SUBFEATURE_TEMP_INPUT)
+ * @field chip_name        Pointer to store matched chip name pointer
+ * @field subfeature_index Pointer to store matched subfeature index
+ */
 typedef struct {
     const char *chip_prefix;
     sensors_feature_type feature_type;
@@ -74,7 +88,6 @@ int pattern_match(const char *str, const char *pattern) {
         }
         token = strtok(NULL, "|");
     }
-
     free(pattern_copy);
     return 0;
 }
@@ -108,10 +121,16 @@ int detect_sensor(
 
     *(config->chip_name) = chip;
     *(config->subfeature_index) = subfeature->number;
-
     return 1;
 }
 
+/**
+ * Initializes the libsensors library and clears the sensor bank.
+ *
+ * This function must be called before any other sensor-related operations.
+ * It initializes the underlying libsensors library and zeroes the internal
+ * sensor bank structure. If initialization fails, an error is logged.
+ */
 void init_sensors(void)
 {
     memset(&sensors_bank, 0, sizeof(sensors_bank));
@@ -121,9 +140,15 @@ void init_sensors(void)
         loginfo("Error while initializing libsensor: %d\n", ret);
         return;
     }
-
 }
 
+/**
+ * Cleans up the libsensors library and resets the sensor bank.
+ *
+ * This function should be called when sensor monitoring is no longer needed.
+ * It releases resources held by libsensors and clears the internal sensor
+ * bank structure.
+ */
 void shutdown_sensors(void)
 {
     sensors_cleanup();
@@ -147,29 +172,24 @@ void detect_lm_sensors(void)
     while ((chip = sensors_get_detected_chips(NULL, &chip_nr)) != NULL) {
         const sensors_feature *feature;
         int feature_nr = 0;
-
 #ifdef _DEBUG
         		const char *adap = sensors_get_adapter_name(&chip->bus);
                 loginfo("Chip: %s: %s\n", chip->prefix, adap);
 #endif
-
         // Iterate through features of the current chip
         while ((feature = sensors_get_features(chip, &feature_nr)) != NULL) {
             const sensors_subfeature *subfeature;
             int subfeature_nr = 0;
-
 #ifdef _DEBUG
                 char *label = sensors_get_label(chip, feature);
                 loginfo("\tFeature: %s (%d)\n", label, feature->type);
                 free(label);
 #endif
-
             // Iterate through subfeatures of the current feature
             while ((subfeature = sensors_get_all_subfeatures(chip, feature, &subfeature_nr)) != NULL) {
 #ifdef _DEBUG
                 loginfo("\t\tSubfeature: %s (%d)\n", subfeature->name, subfeature->type);
 #endif
-
                 // Check against all configured sensors
                 for (size_t i = 0; i < ARRAY_SIZE(sensor_configs); i++) {
                     detect_sensor(chip, feature, subfeature, &sensor_configs[i]);
@@ -179,6 +199,16 @@ void detect_lm_sensors(void)
     }
 }
 
+/**
+ * Calculates the average frequency of active CPU cores.
+ *
+ * Reads the current and minimum frequency of each CPU core from sysfs.
+ * A core is considered active if its current frequency is more than 10%
+ * above its minimum frequency. The average frequency of active cores is
+ * returned in MHz.
+ *
+ * @return Average frequency of active cores in MHz, or 0 if no active cores.
+ */
 int get_active_cores_avg_freq(void) {
     long long total_freq = 0;
     int active_cores = 0;
@@ -208,10 +238,18 @@ int get_active_cores_avg_freq(void) {
         if (f_cur) fclose(f_cur);
         if (f_min) fclose(f_min);
     }
-
     return (active_cores > 0) ? (int)(total_freq / active_cores / 1000) : 0;
 }
 
+/**
+ * Calculates the current CPU usage percentage.
+ *
+ * Reads the system-wide CPU statistics from /proc/stat and computes the
+ * CPU usage as the percentage of non-idle time since the last call.
+ * The function maintains static state to calculate deltas between calls.
+ *
+ * @return CPU usage percentage (0-100), or 0 on error.
+ */
 int get_cpu_usage(void)
 {
     static long long last_total_idle, last_total;
@@ -234,9 +272,7 @@ int get_cpu_usage(void)
         last_total = total;
         last_total_idle = total_idle;
     }
-
     fclose(fp);
-
     return result;
 }
 
@@ -280,7 +316,6 @@ void fetch_sensor_values(sensors_values_t *data)
             data->gpu_freq = (int)(value / 1000000); // to MHz
         }
     }
-
 #ifdef _DEBUG
     loginfo("Sensors data: cpu_freq=%d, cpu_temp=%d\n", data->cpu_freq, data->cpu_temp);
     loginfo("Sensors data: gpu_freq=%d, gpu_temp=%d\n", data->gpu_freq, data->gpu_temp);

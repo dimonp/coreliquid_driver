@@ -1,12 +1,15 @@
+#include "coreliquid_s.h"
+#include "coreliquid.h"
+#include "sensors_wrap.h"
+#include "sensors_dbus.h"
+#include "logger.h"
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
 
-#include "coreliquid_s.h"
-#include "coreliquid.h"
-#include "sensors_wrap.h"
 
 // Flags to stop and suspend the daemon
 static volatile sig_atomic_t is_stop = 0;
@@ -17,9 +20,14 @@ static volatile sig_atomic_t is_suspend = 0;
  *
  * \param handle handle on the AIO device
  */
-void monitor_cpu_temperature(coreliquid_device* handle_s, coreliquid_device* handle_cl)
+void monitor_cpu_temperature(
+    coreliquid_device* handle_s,
+    coreliquid_device* handle_cl,
+    dbus_device* handle_dbus)
 {
     sensors_values_t data = {0};
+    dbus_cooler_stats_t dbus_stats = {0};
+    cooler_status_t cooler_status = {0};
 
     // Listen to temperature in an infinite loop
     while (!is_stop) {
@@ -35,10 +43,20 @@ void monitor_cpu_temperature(coreliquid_device* handle_s, coreliquid_device* han
             set_oled_cpu_status(handle_cl, data.cpu_temp, data.cpu_freq);
             usleep(10000);
             send_cpu_info(handle_s, data.cpu_temp, data.cpu_freq);
+            usleep(10000);
+
+            if (get_cooler_status(handle_cl, &cooler_status) > 0) {
+                dbus_stats.fan_radiator_speed = cooler_status.fan_radiator_speed;
+                dbus_stats.fan_water_block_speed = cooler_status.fan_water_block_speed;
+                dbus_stats.pump_speed = cooler_status.pump_speed;
+                dbus_stats.liquid_temperature = cooler_status.liquid_temperature;
+
+                update_aio_status(handle_dbus, &dbus_stats);
+            }
         }
 
-        // Wait 2s
-        usleep(2000*1000);
+        // Wait 1s
+        usleep(1000*1000);
     }
 }
 
@@ -108,13 +126,13 @@ int main(int argc, char *argv[])
             start_daemon = 1;
 
     // Initialize the subsystems
-    init_coreliquid(start_daemon);
+    open_log(start_daemon, "MSI_Coreliquid_S360");
+    init_coreliquid();
     init_sensors();
 
     coreliquid_device* handle_cl = open_device_aio();
     if (!handle_cl) {
         logerror("Failed to open Coreliquid AIO device.\n");
-
         exit_status = EXIT_FAILURE;
         goto exit_shutdown;
     }
@@ -122,9 +140,15 @@ int main(int argc, char *argv[])
     coreliquid_device* handle_s = open_s_device();
     if (!handle_s) {
         logerror("Failed to open Coreliquid S device.\n");
-
         exit_status = EXIT_FAILURE;
         goto exit_free_cl;
+    }
+
+    dbus_device* handle_dbus = open_dbus();
+    if (!handle_dbus) {
+        logerror("Failed to open system bus.\n");
+        exit_status = EXIT_FAILURE;
+        goto exit_free;
     }
 
     detect_lm_sensors();
@@ -167,9 +191,10 @@ int main(int argc, char *argv[])
         signal(SIGTSTP, suspendit);
         signal(SIGCONT, resumeit);
 
-        monitor_cpu_temperature(handle_s, handle_cl);
+        monitor_cpu_temperature(handle_s, handle_cl, handle_dbus);
     }
 
+    close_dbus(handle_dbus);
 exit_free:
     close_coreliquid_device(handle_s);
 exit_free_cl:
@@ -178,6 +203,7 @@ exit_free_cl:
 exit_shutdown:
     shutdown_sensors();
     shutdown_coreliquid();
+    close_log();
 
     exit(exit_status);
 }

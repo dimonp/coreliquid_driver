@@ -13,8 +13,16 @@ enum fan_mode {
 };
 typedef enum fan_mode fan_mode_t;
 
+struct cooler_status {
+    uint16_t fan_radiator_speed;
+    uint16_t fan_water_block_speed;
+    uint16_t pump_speed;
+    uint8_t liquid_temperature;
+};
+typedef struct cooler_status cooler_status_t;
+
 void set_reset_mcu(coreliquid_device* handle);
-int get_cooler_status(coreliquid_device* handle, int* temperature_in, int* temperature_out, int* fan_speed);
+int get_cooler_status(coreliquid_device* handle, cooler_status_t* status);
 void set_fan_mode(coreliquid_device* handle, fan_mode_t fan_mode);
 void set_oled_cpu_status(coreliquid_device* handle, int temperature, int frequency);
 void set_oled_show_clock(coreliquid_device* handle, uint8_t style);

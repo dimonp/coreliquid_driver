@@ -1,65 +1,23 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdarg.h>
-#include <syslog.h>
-#include <unistd.h>
-#include <hidapi/hidapi.h>
-
 #include "coreliquid_hid.h"
+#include "logger.h"
 
-static int dosyslog = 0;
-
-void loginfo(const char *format, ...)
-{
-    va_list ap;
-    va_start(ap, format);
-
-#ifndef _DEBUG
-    if (dosyslog)
-        vsyslog(LOG_INFO, format, ap);
-    else
-#endif
-        vfprintf(stderr, format, ap);
-
-    va_end(ap);
-}
-
-void logerror(const char *format, ...)
-{
-    va_list ap;
-    va_start(ap, format);
-
-#ifndef _DEBUG
-    if (dosyslog)
-        vsyslog(LOG_ERR, format, ap);
-    else
-#endif
-        vfprintf(stderr, format, ap);
-
-    va_end(ap);
-}
+#include <hidapi/hidapi.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 struct coreliquid_device_ {
     hid_device* hid_device_handle;
 };
 typedef struct coreliquid_device_ coreliquid_device;
 
-void init_coreliquid(int syslog)
+void init_coreliquid(void)
 {
-    dosyslog = syslog;
-
-    if (dosyslog)
-        openlog("MSI_Coreliquid", LOG_PID, LOG_DAEMON);
-
     hid_init();
 }
 
 void shutdown_coreliquid(void)
 {
     hid_exit();
-
-    if (dosyslog)
-        closelog();
 }
 
 /**
@@ -74,8 +32,8 @@ coreliquid_device* open_coreliquid_device(uint16_t vid, uint16_t pid)
     coreliquid_device *cl_handle = NULL;
 
     cl_handle = (coreliquid_device*) calloc(1, sizeof(coreliquid_device));
-	if (!cl_handle)
-		return NULL;
+    if (!cl_handle)
+        return NULL;
 
     hid_device* handle = hid_open(vid, pid, NULL);
     if (handle == NULL) {
@@ -95,11 +53,11 @@ coreliquid_device* open_coreliquid_device(uint16_t vid, uint16_t pid)
 */
 void close_coreliquid_device(coreliquid_device *cl_handle)
 {
-	if (!cl_handle)
-		return;
+    if (!cl_handle)
+        return;
 
     hid_close(cl_handle->hid_device_handle);
-	free(cl_handle);
+    free(cl_handle);
 }
 
 /**
