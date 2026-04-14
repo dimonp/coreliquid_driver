@@ -101,9 +101,10 @@ PlasmoidItem {
     }
 
     function runCmd(mode) {
-        let command = "systemctl stop my_msi_coreliquid_driver@* && systemctl start my_msi_coreliquid_driver@" + mode;
+        let timestamp = Date.now();
+        let command = "sh -c \"systemctl stop 'my_msi_coreliquid_driver@*' && systemctl start 'my_msi_coreliquid_driver@" + mode + "'\" #" + timestamp;
         executable.connectSource(command);
-        // Immediate update for better UX
+
         root.activeMode = mode.toString()
         root.expanded = false;
     }
