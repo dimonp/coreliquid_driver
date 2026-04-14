@@ -1,14 +1,32 @@
 #include "coreliquid_s.h"
 #include "coreliquid.h"
 #include "sensors_wrap.h"
-#include "sensors_dbus.h"
 #include "logger.h"
+
+#ifdef HAVE_SYSTEMD_BUS
+#include "sensors_dbus.h"
+#else
+#define dbus_device void
+#endif
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <signal.h>
+
+// ============================================================================
+// Constants and Configuration
+// ============================================================================
+
+/** Polling interval in microseconds (1 second) */
+#define POLL_INTERVAL_US          (1000000L)
+
+/** Short delay between device operations in microseconds (10ms) */
+#define OPERATION_DELAY_US        (10000L)
+
+/** Application identifier for logging */
+#define APP_IDENTIFIER           "MSI_Coreliquid_S360"
 
 
 // Flags to stop and suspend the daemon
@@ -23,11 +41,13 @@ static volatile sig_atomic_t is_suspend = 0;
 void monitor_cpu_temperature(
     coreliquid_device* handle_s,
     coreliquid_device* handle_cl,
-    dbus_device* handle_dbus)
+    __attribute__((unused)) dbus_device* handle_dbus)
 {
     sensors_values_t data = {0};
+#ifdef HAVE_SYSTEMD_BUS
     dbus_cooler_stats_t dbus_stats = {0};
     cooler_status_t cooler_status = {0};
+#endif
 
     // Listen to temperature in an infinite loop
     while (!is_stop) {
@@ -41,10 +61,11 @@ void monitor_cpu_temperature(
 
         if (data.cpu_temp > 0 && data.cpu_freq > 0) {
             set_oled_cpu_status(handle_cl, data.cpu_temp, data.cpu_freq);
-            usleep(10000);
+            usleep(OPERATION_DELAY_US);
             send_cpu_info(handle_s, data.cpu_temp, data.cpu_freq);
-            usleep(10000);
+            usleep(OPERATION_DELAY_US);
 
+#ifdef HAVE_SYSTEMD_BUS
             if (get_cooler_status(handle_cl, &cooler_status) > 0) {
                 dbus_stats.fan_radiator_speed = cooler_status.fan_radiator_speed;
                 dbus_stats.fan_water_block_speed = cooler_status.fan_water_block_speed;
@@ -53,10 +74,11 @@ void monitor_cpu_temperature(
 
                 update_aio_status(handle_dbus, &dbus_stats);
             }
+#endif
         }
 
         // Wait 1s
-        usleep(1000*1000);
+        usleep(POLL_INTERVAL_US);
     }
 }
 
@@ -126,7 +148,7 @@ int main(int argc, char *argv[])
             start_daemon = 1;
 
     // Initialize the subsystems
-    open_log(start_daemon, "MSI_Coreliquid_S360");
+    open_log(start_daemon, APP_IDENTIFIER);
     init_coreliquid();
     init_sensors();
 
@@ -144,12 +166,15 @@ int main(int argc, char *argv[])
         goto exit_free_cl;
     }
 
-    dbus_device* handle_dbus = open_dbus();
+    dbus_device* handle_dbus = NULL;
+#ifdef HAVE_SYSTEMD_BUS
+    handle_dbus = open_dbus();
     if (!handle_dbus) {
         logerror("Failed to open system bus.\n");
         exit_status = EXIT_FAILURE;
         goto exit_free;
     }
+#endif
 
     detect_lm_sensors();
 
@@ -194,7 +219,9 @@ int main(int argc, char *argv[])
         monitor_cpu_temperature(handle_s, handle_cl, handle_dbus);
     }
 
+#ifdef HAVE_SYSTEMD_BUS
     close_dbus(handle_dbus);
+#endif
 exit_free:
     close_coreliquid_device(handle_s);
 exit_free_cl:

@@ -5,12 +5,6 @@ post_install() {
     systemctl daemon-reload
     echo "  -> Enabling and starting my_msi_coreliquid_driver@5.service..."
     systemctl enable --now my_msi_coreliquid_driver@5.service
-
-    if command -v kpackagetool6 >/dev/null 2>&1; then
-        echo "  -> Updating Plasma widget index..."
-        kpackagetool6 --type Plasma/Applet --list > /dev/null 2>&1 || true
-    fi
-    systemctl reload dbus
 }
 
 post_upgrade() {
