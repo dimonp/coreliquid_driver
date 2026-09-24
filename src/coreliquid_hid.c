@@ -63,37 +63,35 @@ void close_coreliquid_device(coreliquid_device *cl_handle)
 /**
 * Searches for and opens a CoreLiquid device matching specified vendor and product IDs.
 *
-* @param vids Array of vendor IDs to search for.
-* @param vids_len Length of the vendor IDs array.
-* @param pids Array of product IDs to search for.
-* @param pids_len Length of the product IDs array.
-* @return Pointer to the opened CoreLiquid device if found; 0 otherwise.
+* @param supported_devices Array of vendor and product IDs to search for.
+* @param supported_devices_len Length of the vendor and product IDs array.
+* @return Handler of the opened CoreLiquid device if found; NULL otherwise.
 */
-coreliquid_device* search_and_open_device(const uint16_t *vids, size_t vids_len, const uint16_t *pids, size_t pids_len)
-{
+coreliquid_device* search_and_open_device(
+    const usb_device_id_t *supported_devices,
+    size_t supported_devices_len
+) {
     struct hid_device_info *devices = hid_enumerate(0x0, 0x0);
     struct hid_device_info *current_dev = devices;
 
     coreliquid_device* result = {0};
     while (current_dev) {
 
-        for (size_t i = 0; i < vids_len; ++i) {
-            if (current_dev->vendor_id != vids[i]) {
+        for (size_t i = 0; i < supported_devices_len; ++i) {
+            if (current_dev->vendor_id != supported_devices[i].vid) {
+                continue;
+            }
+            if (current_dev->product_id != supported_devices[i].pid) {
                 continue;
             }
 
-            for (size_t j = 0; j < pids_len; ++j) {
-                if (current_dev->product_id != pids[j])
-                    continue;
+            loginfo("Found device: %s %hx:%hx interface: %i bus_type: %i manufacturer: %ls product: %ls\n",
+                current_dev->path, current_dev->vendor_id, current_dev->product_id,
+                current_dev->interface_number, current_dev->bus_type,
+                current_dev->manufacturer_string, current_dev->product_string);
 
-                loginfo("Found device: %s %hx:%hx interface: %i bus_type: %i manufacturer: %ls product: %ls\n",
-                    current_dev->path, current_dev->vendor_id, current_dev->product_id,
-                    current_dev->interface_number, current_dev->bus_type,
-                    current_dev->manufacturer_string, current_dev->product_string);
-
-                result = open_coreliquid_device(current_dev->vendor_id, current_dev->product_id);
-                goto found;
-            }
+            result = open_coreliquid_device(current_dev->vendor_id, current_dev->product_id);
+            goto found;
         }
 
         current_dev = current_dev->next;

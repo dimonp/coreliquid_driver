@@ -10,8 +10,10 @@
 #define REPORT_ID_LEDPE0 0xFA
 #define CHECK_FILL_VALUE 0xCC
 
-static const uint16_t supported_vids[] = { 0x0db0 };
-static const uint16_t supported_pids[] = { 0x6a04, 0x6a05 };
+static const usb_device_id_t supported_devices[] = {
+    { 0x0DB0, 0x6A04 },
+    { 0x0DB0, 0x6A05 }
+};
 
 // command codes for reports with id = 0x01
 enum command_code_mcu {
@@ -469,5 +471,5 @@ int get_fw_version_ldprom(coreliquid_device* handle, int* version_major, int* ve
 */
 coreliquid_device* open_device_aio(void)
 {
-    return search_and_open_device(supported_vids, ARRAY_SIZE(supported_vids), supported_pids, ARRAY_SIZE(supported_pids));
+    return search_and_open_device(supported_devices, ARRAY_SIZE(supported_devices));
 }

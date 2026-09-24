@@ -12,8 +12,16 @@
 
 #define REFLASH_TIME 5
 
-static const uint16_t supported_vids[] = { 0x0db0, 0x1462 };
-static const uint16_t supported_pids[] = { 0x5259, 0x75B6, 0x8DBF, 0x9BA6, 0xC7B2, 0xD085 };
+static const usb_device_id_t supported_devices[] = {
+    { 0x0DB0, 0x5259 }, // X360
+    { 0x0DB0, 0x75B6 }, // S280
+    { 0x0DB0, 0x8DBF }, // D360
+    { 0x0DB0, 0x9BA6 }, // S360
+    { 0x1462, 0x9BA6 }, // S360(MEG)
+    { 0x0DB0, 0xC7B2 }, // X240
+    { 0x0DB0, 0xD085 }, // D240
+};
+
 
 enum display_mode {
     DISPLAY_MODE_HW_MONITOR = 0,
@@ -463,5 +471,5 @@ int get_device_info(coreliquid_device *handle, int *fw_ver)
 */
 coreliquid_device* open_s_device(void)
 {
-    return search_and_open_device(supported_vids, ARRAY_SIZE(supported_vids), supported_pids, ARRAY_SIZE(supported_pids));
+    return search_and_open_device(supported_devices, ARRAY_SIZE(supported_devices));
 }
