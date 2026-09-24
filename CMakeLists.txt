@@ -14,7 +14,7 @@ set(CMAKE_C_STANDARD 11)
 set(INSTALL_PREFIX "${CMAKE_INSTALL_PREFIX}")
 
 set(PROJECT_SOURCES
-    src/my_msi_driver.c
+    src/main.c
     src/logger.c src/logger.h
     src/coreliquid_hid.c src/coreliquid_hid.h
     src/coreliquid.c src/coreliquid.h
