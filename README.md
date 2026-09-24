@@ -1,4 +1,4 @@
-# coreliquid_driver
+# MSI Coreliquid S360 driver
 
 This is a fork of the original [project](https://github.com/sarzeaud/coreliquid_driver) that doesn't work on my MEG S360. Probably because the interaction protocol has changed since its creation.
 
@@ -18,11 +18,19 @@ In this first version, the CUSTOMIZE = 3 mode is not allowed, as the 5 others
 should do the job. Here are pictures from the MSI soft for Windows, showing the link
 between temperature and fan speeds for three modes.
 
-![SILENT mode](pictures/silent.png)
+## Plasma 6 Widget
 
-![BALANCE mode](pictures/balance.png)
+A Plasma 6 applet that provides a convenient GUI to switch between cooling modes of the MSI CoreLiquid S360 AIO. The widget displays the current mode and allows you to switch between Silent, Balance, Game, and Smart modes with a single click.
 
-![GAME mode](pictures/game.png)
+### Screenshots
+
+![Widget in compact mode](pictures/widget.png)
+
+*Compact representation in the system tray.*
+
+![Widget expanded with mode buttons](pictures/widget-tray.png)
+
+*Expanded view showing all available cooling modes.*
 
 ## Dependencies
 
@@ -126,20 +134,6 @@ You can build from source using the provided PKGBUILD.
 ```bash
 makepkg -i
 ```
-
-## Plasma 6 Widget
-
-A Plasma 6 applet that provides a convenient GUI to switch between cooling modes of the MSI CoreLiquid S360 AIO. The widget displays the current mode and allows you to switch between Silent, Balance, Game, and Smart modes with a single click.
-
-### Screenshots
-
-![Widget in compact mode](pictures/widget.png)
-
-*Compact representation in the system tray.*
-
-![Widget expanded with mode buttons](pictures/widget-tray.png)
-
-*Expanded view showing all available cooling modes.*
 
 ### Widget installation
 
