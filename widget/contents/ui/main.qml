@@ -15,7 +15,7 @@ PlasmoidItem {
     id: root
 
     // Current active mode (default -1 until detected)
-    property string activeMode: "5"
+    property string activeMode: "-1"
     property int fanRadiatorSpeed: 0
     property int fanWaterBlockSpeed: 0
     property int pumpSpeed: 0
@@ -237,5 +237,9 @@ PlasmoidItem {
                 }
             }
         }
+    }
+
+    Component.onCompleted: {
+        root.doUpdate();
     }
 }

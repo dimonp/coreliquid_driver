@@ -1,7 +1,7 @@
 pkgname=msi-meg-coreliquid-s360-driver
 pkgname=('msi-meg-coreliquid-s360-driver' 'msi-meg-coreliquid-plasma-widget')
 pkgver=0.1.5
-pkgrel=1
+pkgrel=2
 arch=('x86_64')
 url="https://github.com/dimonp/coreliquid_driver"
 license=('GPL3')
