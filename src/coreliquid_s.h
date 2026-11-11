@@ -43,8 +43,16 @@ typedef enum display_features display_features_t;
 
 #define DEFAULT_DISPLAY_FEATURES (SHOW_CPU_TEMP | SHOW_PUMP_FAN | SHOW_RADIATOR_FAN)
 
+struct hw_monitor_info {
+    int cpu_temp;
+    int cpu_freq;
+    int cpu_usage;
+    int gpu_temp;
+    int gpu_freq;
+};
+typedef struct hw_monitor_info hw_monitor_info_t;
 
-void send_cpu_info(coreliquid_device *cl_handle, int temperature, int frequency);
+void send_hw_monitor_info(coreliquid_device *cl_handle, hw_monitor_info_t info);
 void set_lcm_back_light(coreliquid_device *handle, int brightness);
 void set_lcm_direction(coreliquid_device *handle, lcm_dir_t direction);
 void send_host_msg(coreliquid_device *handle, const char *text);

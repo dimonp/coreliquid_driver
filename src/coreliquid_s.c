@@ -247,11 +247,9 @@ void set_reset_lcm_mcu(coreliquid_device* handle)
 * Sends CPU temperature and frequency information to the device.
 *
 * @param handle Pointer to the coreliquid device handle.
-* @param temperature The CPU temperature (Celsius).
-* @param frequency The CPU frequency (MHz).
-* @param usage The CPU usage (%).
+* @param info The hardware monitor info.
 */
-void send_cpu_info(coreliquid_device *handle, int temperature, int frequency)
+void send_hw_monitor_info(coreliquid_device *handle, hw_monitor_info_t info)
 {
     struct hw_info_message message;
     memset(&message.raw_buffer, 0, sizeof(message.raw_buffer));
@@ -265,8 +263,11 @@ void send_cpu_info(coreliquid_device *handle, int temperature, int frequency)
                 .message.length = sizeof(message.data.payload),
             },
             .payload = {
-                .cpu_temp = temperature,
-                .cpu_freq = frequency,
+                .cpu_temp = info.cpu_temp,
+                .cpu_freq = info.cpu_freq,
+                .cpu_usage = info.cpu_usage,
+                .gpu_temp = info.gpu_temp,
+                .gpu_freq = info.gpu_freq,
             }
         }
     };

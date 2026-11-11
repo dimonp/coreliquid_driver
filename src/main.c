@@ -62,7 +62,14 @@ void monitor_cpu_temperature(
         if (data.cpu_temp > 0 && data.cpu_freq > 0) {
             set_oled_cpu_status(handle_cl, data.cpu_temp, data.cpu_freq);
             usleep(OPERATION_DELAY_US);
-            send_cpu_info(handle_s, data.cpu_temp, data.cpu_freq);
+
+            send_hw_monitor_info(handle_s, (hw_monitor_info_t) {
+                .cpu_temp = data.cpu_temp,
+                .cpu_freq = data.cpu_freq,
+                .cpu_usage = data.cpu_usage,
+                .gpu_temp = data.gpu_temp,
+                .gpu_freq = data.gpu_freq,
+            });
             usleep(OPERATION_DELAY_US);
 
 #ifdef HAVE_SYSTEMD_BUS

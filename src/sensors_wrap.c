@@ -316,6 +316,7 @@ void fetch_sensor_values(sensors_values_t *data)
             data->gpu_freq = (int)(value / 1000000); // to MHz
         }
     }
+
 #ifdef _DEBUG
     loginfo("Sensors data: cpu_freq=%d, cpu_temp=%d\n", data->cpu_freq, data->cpu_temp);
     loginfo("Sensors data: gpu_freq=%d, gpu_temp=%d\n", data->gpu_freq, data->gpu_temp);
